@@ -1,0 +1,7 @@
+{
+  "authority": "https://login.microsoftonline.com/<your AAD tenant name>",
+  "client_id": "<your client id>",
+  "scope": [ "https://graph.microsoft.com/.default" ],
+  "secret": "<your client secret>",
+  "endpoint": "https://graph.microsoft.com/v1.0/users"
+}
