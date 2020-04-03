@@ -12,7 +12,7 @@
 #define NSS_HTTP_INITIAL_BUFFER_SIZE (256 * 1024)  /* 256 KB */
 #define NSS_HTTP_MAX_BUFFER_SIZE (10 * 1024 * 1024)  /* 10 MB */
 
-void list_users() 
+void list_users(char *format) 
 {
     char graph_url[512], token_url[512], token_postfield[512], auth_header[2048];
     const char *access_token;
@@ -39,8 +39,8 @@ void list_users()
 
     snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$select=id,userPrincipalName,mail,extj8xolrvw_linux");
     char *response = nss_http_request(graph_url, auth_header);
-
-    printf("id\t\t\t\t\tuserPrincipalName\t\tuser\tuid\tgidnumber\thomedir\t\tshell\n");
+    
+    if(!strcmp(format, "list")) printf("id\t\t\t\t\tuserPrincipalName\t\tuser\tuid\tgidnumber\thomedir\t\tshell\n");
 
     json_root = json_loads(response, 0, &json_error);
     json_t *passwd_object = json_object_get(json_root, "value");
@@ -60,37 +60,43 @@ void list_users()
       j_homedir = json_object_get(extension_object, "homedir");
       j_shell = json_object_get(extension_object, "shell");
 
-      printf("%s\t", json_string_value(j_id));
-      if (!json_is_null(j_mail)) {
-        printf("%s\t", json_string_value(j_mail));
-        if (strlen(json_string_value(j_mail)) < 25) printf("\t");
-      } else {
-        if (!json_is_null(j_principal)) printf("%s\t", json_string_value(j_principal));
+      if (!strcmp(format, "list")) {
+        printf("%s\t", json_string_value(j_id));
+        if (!json_is_null(j_mail)) {
+          printf("%s\t", json_string_value(j_mail));
+          if (strlen(json_string_value(j_mail)) < 25) printf("\t");
+        } else {
+          if (!json_is_null(j_principal)) printf("%s\t", json_string_value(j_principal));
+        }
+
+        if (json_string_value(j_user)) { 
+          printf("%s\t", json_string_value(j_user));
+        } else { printf("not_set\t"); }
+
+        if (json_integer_value(j_uid)) {
+          printf("%lli\t", json_integer_value(j_uid));
+        } else { printf("not_set\t"); }
+
+        if (json_integer_value(j_gidnumber)) {
+          printf("%lli\t\t", json_integer_value(j_gidnumber));
+        } else { printf("not_set\t\t"); }
+
+        if (json_string_value(j_homedir)) {
+          printf("%s\t", json_string_value(j_homedir));
+          if (strlen(json_string_value(j_homedir)) < 10) printf("\t");
+        } else { printf("not_set\t\t"); }
+
+        if (json_string_value(j_shell)) {
+          printf("%s\t", json_string_value(j_shell));
+        } else { printf("not_set\t"); }
+        printf("\n");
       }
-
-      if (json_string_value(j_user)) { 
-        printf("%s\t", json_string_value(j_user));
-      } else { printf("not_set\t"); }
-
-      if (json_integer_value(j_uid)) {
-        printf("%lli\t", json_integer_value(j_uid));
-      } else { printf("not_set\t"); }
-
-      if (json_integer_value(j_gidnumber)) {
-        printf("%lli\t\t", json_integer_value(j_gidnumber));
-      } else { printf("not_set\t\t"); }
-
-      if (json_string_value(j_homedir)) {
-        printf("%s\t", json_string_value(j_homedir));
-        if (strlen(json_string_value(j_homedir)) < 10) printf("\t");
-      } else { printf("not_set\t\t"); }
-
-      if (json_string_value(j_shell)) {
-        printf("%s\t", json_string_value(j_shell));
-      } else { printf("not_set\t"); }
-      printf("\n");
+      if (!strcmp(format, "passwd")) {
+        printf("%s:x:%lli:%lli:,,,:%s:%s\n", json_string_value(j_user), json_integer_value(j_uid), json_integer_value(j_gidnumber), json_string_value(j_homedir), json_string_value(j_shell));
+      }
     }
 
+exit(0);
 }
 
 void add_user(char *name, char *id) 
@@ -168,14 +174,14 @@ void print_usage()
 
 int main(int argc, char *argv[])
 {
-  int opt = 0, add = 0;
+  int opt = 0, add = 0, list = 0, passwd = 0;
   int area = -1, perimeter = -1, breadth = -1, length = -1;
   char *id, *name, *homedir;
 
   static struct option long_options[] = {
     {"list",      no_argument,       0, 'l' },
     {"add",       no_argument,       0, 'a' },
-    {"perimeter", no_argument,       0, 'p' },
+    {"passwd",    no_argument,       0, 'p' },
     {"id",        required_argument, 0, 'i' },
     {"homedir",   required_argument, 0, 'h' },
     {0,           0,                 0,  0  }
@@ -188,11 +194,11 @@ int main(int argc, char *argv[])
       case 'a' : 
         add = 1;
         break;
-      case 'p' : perimeter = 0;
+      case 'p' : 
+	passwd = 1;
         break;
       case 'l' : 
-        list_users();
-        exit(0);
+        list = 1;
         break;
       case 'i' : 
         id = optarg;
@@ -205,6 +211,10 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
   }
+
+  if (list == 1) list_users("list"); 
+  if (passwd == 1) list_users("passwd"); 
+
   if (!argv[optind]) {
     print_usage();
     exit(EXIT_FAILURE);
