@@ -210,28 +210,75 @@ _nss_aad_getgrent_r(struct group *result, char *buffer, size_t buflen, int *errn
 enum nss_status
 _nss_aad_getgrgid_r_locked(gid_t gid, struct group *result, char *buffer, size_t buflen, int *errnop)
 {
-    char url[512];
-    json_t *json_root;
+    char graph_url[512], token_url[512], token_postfield[512], auth_header[2048], members_url[512];
+    const char *access_token;
+    json_t *json_root, *j_gr_id, *group_root, *members_root;
     json_error_t json_error;
     
-    printf("_nss_aad_getgrgid_r_locked\n");
+    char *client_id = nss_read_config("client_id");
+    char *secret = nss_read_config("secret");
+    char *authority = nss_read_config("authority");
 
-    snprintf(url, 512, "http://" NSS_HTTP_SERVER ":" NSS_HTTP_PORT "/group?gid=%d", gid);
+    snprintf(token_url, 512, "%s/oauth2/v2.0/token", authority);
+    snprintf(token_postfield, 512, "client_id=%s&scope=https%%3A%%2F%%2Fgraph.microsoft.com%%2F.default&client_secret=%s&grant_type=client_credentials", client_id, secret);
 
-    char *response = nss_http_request(url, "bla");
-    if (!response) {
+    char *token = nss_http_token_request(token_url, token_postfield);
+
+    json_root = json_loads(token, 0, &json_error);
+    json_t *access_token_object = json_object_get(json_root, "access_token");
+    access_token = json_string_value(access_token_object);
+
+    if (json_is_string(access_token_object)) {
+      snprintf(auth_header, 2048, "%s %s\n", "Authorization: Bearer", access_token);
+      //printf("auth header is %s\n", auth_header);
+    }
+    json_decref(json_root);
+
+    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/groups?$filter=extj8xolrvw_linux/gid%%20eq%%20%%27%d%%27&$select=id,extj8xolrvw_linux", gid);
+
+    char *groupresponse = nss_http_request(graph_url, auth_header);
+
+    json_root = json_loads(groupresponse, 0, &json_error);
+    json_t *group_object = json_object_get(json_root, "value");
+    if (!json_is_array(group_object)) return -1;
+    if (json_array_size(group_object) < 1) return -1;
+    for(int i = 0; i < json_array_size(group_object); i++)
+    {
+      json_t *entry_data = json_array_get(group_object, i);
+      j_gr_id= json_object_get(entry_data, "id");
+    }
+    //printf("group id is %s", json_string_value(j_gr_id));
+
+    if (json_is_string(j_gr_id)) {
+      snprintf(members_url, 512, "%s%s%s", "https://graph.microsoft.com/v1.0/groups/", json_string_value(j_gr_id), "/members?$select=id,extj8xolrvw_linux");
+    }
+    json_decref(json_root);
+
+    char *membersresponse = nss_http_request(members_url, auth_header);
+    //printf("%s\n", membersresponse);
+
+    if (!groupresponse) {
+        *errnop = ENOENT;
+        return NSS_STATUS_UNAVAIL;
+    }
+    if (!membersresponse) {
         *errnop = ENOENT;
         return NSS_STATUS_UNAVAIL;
     }
 
-    json_root = json_loads(response, 0, &json_error);
+    group_root = json_loads(groupresponse, 0, &json_error);
+    members_root = json_loads(membersresponse, 0, &json_error);
 
-    if (!json_root) {
+    if (!group_root) {
+        *errnop = ENOENT;
+        return NSS_STATUS_UNAVAIL;
+    }
+    if (!members_root) {
         *errnop = ENOENT;
         return NSS_STATUS_UNAVAIL;
     }
 
-    int pack_result = pack_group_struct(json_root, NULL, result, buffer, buflen);
+    int pack_result = pack_group_struct(group_root, members_root, result, buffer, buflen);
 
     if (pack_result == -1) {
         json_decref(json_root);
