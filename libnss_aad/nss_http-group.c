@@ -11,12 +11,12 @@ static int ent_json_idx = 0;
 // -1 Failed to parse
 // -2 Buffer too small
 static int
-pack_group_struct(json_t *grouproot, struct group *result, char *buffer, size_t buflen)
+pack_group_struct(json_t *grouproot, json_t *membersroot, struct group *result, char *buffer, size_t buflen)
 {
 
     char *next_buf = buffer;
     size_t bufleft = buflen;
-    json_t *j_gr_name, *j_gr_gid, *j_gr_mem;
+    json_t *j_gr_name, *j_gr_gid, *j_gr_mem, *j_mem_name;
 
     if (!json_is_object(grouproot)) return -1;
 
@@ -56,34 +56,32 @@ pack_group_struct(json_t *grouproot, struct group *result, char *buffer, size_t 
     // Yay, ints are so easy!
     result->gr_gid = json_integer_value(j_gr_gid);
 
-    char members[2048]; 
-    int num_members = 0;
-    snprintf(members, j_strlen(j_gr_mem)+1, "%s", json_string_value(j_gr_mem));
-    char *ptr = strtok(members, ",");
+    //starting to get the members
+    if (!json_is_object(membersroot)) return -1;
+    json_t *members_object = json_object_get(membersroot, "value");
+    if (!json_is_array(members_object)) return -1;
+    if (json_array_size(members_object) < 1) return -1;
 
-	while(ptr != NULL)
-	{
-		ptr = strtok(NULL, ",");
-		num_members++;
-	}
     // Carve off some space for array of members.
     result->gr_mem = (char **)next_buf;
-    next_buf += (num_members +1) * sizeof(char *);
-    bufleft  -= (num_members +1) * sizeof(char *);
+    next_buf += (json_array_size(members_object) +1) * sizeof(char *);
+    bufleft  -= (json_array_size(members_object) +1) * sizeof(char *);
 
-    snprintf(members, j_strlen(j_gr_mem)+1, "%s\n", json_string_value(j_gr_mem));
-    ptr = strtok(members, ",");
-    int i = 0;
-    while(ptr != NULL)
+    for(int i = 0; i < json_array_size(members_object); i++)
     {
-        if (bufleft <= strlen(ptr)) return -2;
-        strncpy(next_buf, ptr, bufleft);
-        result->gr_mem[i] = next_buf;
+      json_t *entry_data = json_array_get(members_object, i);
+      json_t *extension_object = json_object_get(entry_data, "extj8xolrvw_linux");
 
-        next_buf += strlen(result->gr_mem[i]) + 1;
-        bufleft  -= strlen(result->gr_mem[i]) + 1;
-	ptr = strtok(NULL, ",");
-        i++;
+      j_mem_name = json_object_get(extension_object, "user");
+      if (!json_is_string(j_mem_name)) return -1;
+
+      //printf("%s\n", json_string_value(j_mem_name));
+
+      if (bufleft <= j_strlen(j_mem_name)) return -2;
+      strncpy(next_buf, json_string_value(j_mem_name), bufleft);
+      result->gr_mem[i] = next_buf;
+      next_buf += strlen(result->gr_mem[i]) + 1;
+      bufleft  -= strlen(result->gr_mem[i]) + 1;
     }
 
     return 0;
@@ -172,7 +170,7 @@ _nss_aad_getgrent_r_locked(struct group *result, char *buffer, size_t buflen, in
     if (ret != NSS_STATUS_SUCCESS) return ret;
 
     int pack_result = pack_group_struct(
-        json_array_get(ent_json_root, ent_json_idx), result, buffer, buflen
+        json_array_get(ent_json_root, ent_json_idx), NULL, result, buffer, buflen
     );
 
     if (pack_result == -1) {
@@ -233,7 +231,7 @@ _nss_aad_getgrgid_r_locked(gid_t gid, struct group *result, char *buffer, size_t
         return NSS_STATUS_UNAVAIL;
     }
 
-    int pack_result = pack_group_struct(json_root, result, buffer, buflen);
+    int pack_result = pack_group_struct(json_root, NULL, result, buffer, buflen);
 
     if (pack_result == -1) {
         json_decref(json_root);
@@ -269,7 +267,7 @@ _nss_aad_getgrnam_r_locked(const char *name, struct group *result, char *buffer,
 {
     char graph_url[512], token_url[512], token_postfield[512], auth_header[2048], members_url[512];
     const char *access_token;
-    json_t *json_root, *j_gr_id;
+    json_t *json_root, *j_gr_id, *group_root, *members_root;
     json_error_t json_error;
 
     char *client_id = nss_read_config("client_id");
@@ -312,24 +310,32 @@ _nss_aad_getgrnam_r_locked(const char *name, struct group *result, char *buffer,
     }
     json_decref(json_root);
 
-    printf("members url is %s\n", members_url);
     char *membersresponse = nss_http_request(members_url, auth_header);
-    printf("%s\n", membersresponse);
+    //printf("%s\n", membersresponse);
 
 
     if (!groupresponse) {
         *errnop = ENOENT;
         return NSS_STATUS_UNAVAIL;
     }
-
-    json_root = json_loads(groupresponse, 0, &json_error);
-
-    if (!json_root) {
+    if (!membersresponse) {
         *errnop = ENOENT;
         return NSS_STATUS_UNAVAIL;
     }
 
-    int pack_result = pack_group_struct(json_root, result, buffer, buflen);
+    group_root = json_loads(groupresponse, 0, &json_error);
+    members_root = json_loads(membersresponse, 0, &json_error);
+
+    if (!group_root) {
+        *errnop = ENOENT;
+        return NSS_STATUS_UNAVAIL;
+    }
+    if (!members_root) {
+        *errnop = ENOENT;
+        return NSS_STATUS_UNAVAIL;
+    }
+
+    int pack_result = pack_group_struct(group_root, members_root, result, buffer, buflen);
 
     if (pack_result == -1) {
         json_decref(json_root);
