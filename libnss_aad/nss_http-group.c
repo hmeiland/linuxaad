@@ -16,7 +16,8 @@ pack_group_struct(json_t *grouproot, json_t *membersroot, struct group *result, 
 
     char *next_buf = buffer;
     size_t bufleft = buflen;
-    json_t *j_gr_name, *j_gr_gid, *j_gr_mem, *j_mem_name;
+    //json_t *j_gr_name, *j_gr_gid, *j_gr_mem, *j_mem_name;
+    json_t *j_gr_name, *j_gr_gid, *j_mem_name;
 
     if (!json_is_object(grouproot)) return -1;
 
@@ -30,14 +31,14 @@ pack_group_struct(json_t *grouproot, json_t *membersroot, struct group *result, 
 
       j_gr_name = json_object_get(extension_object, "group");
       j_gr_gid = json_object_get(extension_object, "gid");
-      j_gr_mem = json_object_get(extension_object, "members");
+      //j_gr_mem = json_object_get(extension_object, "members");
     }
 
     //json_t *j_member;
 
     if (!json_is_string(j_gr_name)) return -1;
     if (!json_is_integer(j_gr_gid)) return -1;
-    if (!json_is_string(j_gr_mem)) return -1;
+    //if (!json_is_string(j_gr_mem)) return -1;
 
     //printf("%s\n", json_string_value(j_gr_mem));
 
