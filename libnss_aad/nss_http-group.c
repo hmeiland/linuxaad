@@ -11,32 +11,36 @@ static int ent_json_idx = 0;
 // -1 Failed to parse
 // -2 Buffer too small
 static int
-pack_group_struct(json_t *grouproot, struct group *result, char *buffer, size_t buflen)
+//pack_group_struct(json_t *grouproot, struct group *result, char *buffer, size_t buflen)
+pack_group_struct(json_t *passwd_object, struct group *result, char *buffer, size_t buflen)
 {
 
     char *next_buf = buffer;
     size_t bufleft = buflen;
     json_t *j_gr_name, *j_gr_gid, *j_gr_mem, *j_member;
 
-    if (!json_is_object(grouproot)) return -1;
-
-    json_t *passwd_object = json_object_get(grouproot, "value");
-    if (!json_is_array(passwd_object)) return -1;
-    if (json_array_size(passwd_object) < 1) return -1;
-    for(int i = 0; i < json_array_size(passwd_object); i++)
-    {
-      json_t *entry_data = json_array_get(passwd_object, i);
-      json_t *extension_object = json_object_get(entry_data, "extj8xolrvw_linux");
+    //printf("pack 1\n");
+    //json_t *passwd_object = json_object_get(grouproot, "value");
+    //printf("%s\n", json_dumps(passwd_object, JSON_INDENT(2)));
+    //if (!json_is_array(passwd_object)) return -1;
+    //printf("pack 1a\n");
+    //if (json_array_size(passwd_object) < 1) return -1;
+    //printf("pack 1b\n");
+    //for(int i = 0; i < json_array_size(passwd_object); i++)
+    //{
+      //json_t *entry_data = json_array_get(passwd_object, i);
+      json_t *extension_object = json_object_get(passwd_object, "extj8xolrvw_linux");
 
       j_gr_name = json_object_get(extension_object, "group");
       j_gr_gid = json_object_get(extension_object, "gid");
       j_gr_mem = json_object_get(extension_object, "members");
-    }
+    //}
 
     if (!json_is_string(j_gr_name)) return -1;
     if (!json_is_integer(j_gr_gid)) return -1;
     if (!json_is_array(j_gr_mem)) return -1;
 
+    //printf("pack 2\n");
     memset(buffer, '\0', buflen);
 
     if (bufleft <= j_strlen(j_gr_name)) return -2;
@@ -49,6 +53,7 @@ pack_group_struct(json_t *grouproot, struct group *result, char *buffer, size_t 
     next_buf += 2;
     bufleft -= 2;
 
+    //printf("pack 3\n");
     // Yay, ints are so easy!
     result->gr_gid = json_integer_value(j_gr_gid);
 
@@ -69,6 +74,7 @@ pack_group_struct(json_t *grouproot, struct group *result, char *buffer, size_t 
       next_buf += strlen(result->gr_mem[i]) + 1;
       bufleft  -= strlen(result->gr_mem[i]) + 1;
     }
+    //printf("pack 4\n");
 
     return 0;
 }
@@ -77,31 +83,80 @@ pack_group_struct(json_t *grouproot, struct group *result, char *buffer, size_t 
 enum nss_status
 _nss_aad_setgrent_locked(int stayopen)
 {
-    char url[512];
-    json_t *json_root;
+    //printf("setgrent\n");
+    char graph_url[512], token_url[512], token_postfield[512], auth_header[2048], members_url[512];
+    const char *access_token;
+    char *membersresponse;
+    json_t *json_root, *j_gr_id, *group_root, *members_root;
     json_error_t json_error;
+    
+    char *client_id = nss_read_config("client_id");
+    char *secret = nss_read_config("secret");
+    char *authority = nss_read_config("authority");
 
-    printf("_nss_aad_setgrent_locked\n");
+    snprintf(token_url, 512, "%s/oauth2/v2.0/token", authority);
+    snprintf(token_postfield, 512, "client_id=%s&scope=https%%3A%%2F%%2Fgraph.microsoft.com%%2F.default&client_secret=%s&grant_type=client_credentials", client_id, secret);
 
-    snprintf(url, 512, "http://" NSS_HTTP_SERVER ":" NSS_HTTP_PORT "/group");
+    char *token = nss_http_token_request(token_url, token_postfield);
 
-    char *response = nss_http_request(url, "bla");
-    if (!response) {
+    json_root = json_loads(token, 0, &json_error);
+    json_t *access_token_object = json_object_get(json_root, "access_token");
+    access_token = json_string_value(access_token_object);
+
+    if (json_is_string(access_token_object)) {
+      snprintf(auth_header, 2048, "%s %s\n", "Authorization: Bearer", access_token);
+    }
+    json_decref(json_root);
+
+    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/groups?$select=id,extj8xolrvw_linux");
+
+    char *groupresponse = nss_http_request(graph_url, auth_header);
+
+    group_root = json_loads(groupresponse, 0, &json_error);
+    json_t *group_object = json_object_get(group_root, "value");
+    if (!json_is_array(group_object)) return -1;
+    if (json_array_size(group_object) < 1) return -1;
+    for(int i = 0; i < json_array_size(group_object); i++)
+    {
+      json_t *entry_data = json_array_get(group_object, i);
+      j_gr_id= json_object_get(entry_data, "id");
+      if (json_is_string(j_gr_id)) {
+        snprintf(members_url, 512, "%s%s%s", "https://graph.microsoft.com/v1.0/groups/", json_string_value(j_gr_id), "/members?$select=id,extj8xolrvw_linux");
+      }
+      json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), "extj8xolrvw_linux");
+
+      membersresponse = nss_http_request(members_url, auth_header);
+      members_root = json_loads(membersresponse, 0, &json_error);
+      if (!json_is_array(json_object_get(members_root, "value"))) return -1;
+      if (json_array_size(json_object_get(members_root, "value")) < 1) return -1;
+
+      json_t *memberlist = json_array();
+      
+      for(int j = 0; j < json_array_size(json_object_get(members_root, "value")); j++)
+      {
+        json_array_append(memberlist, json_object_get(json_object_get(json_array_get(json_object_get(members_root, "value"), j), "extj8xolrvw_linux"), "user"));
+      } 
+      json_object_set(nested, "members", memberlist);
+      json_decref(members_root);
+    }
+    //printf("%s\n", json_dumps(group_object, JSON_INDENT(2)));
+
+    if (!groupresponse) {
+        //*errnop = ENOENT;
         return NSS_STATUS_UNAVAIL;
     }
 
-    json_root = json_loads(response, 0, &json_error);
-
-    if (!json_root) {
+    if (!membersresponse) {
+        //*errnop = ENOENT;
         return NSS_STATUS_UNAVAIL;
     }
 
-    if (!json_is_array(json_root)) {
-        json_decref(json_root);
+    if (!group_root) {
+        ///errnop = ENOENT;
         return NSS_STATUS_UNAVAIL;
     }
 
-    ent_json_root = json_root;
+    ent_json_root = group_object;
     ent_json_idx = 0;
 
     return NSS_STATUS_SUCCESS;
@@ -154,6 +209,12 @@ _nss_aad_getgrent_r_locked(struct group *result, char *buffer, size_t buflen, in
     }
 
     if (ret != NSS_STATUS_SUCCESS) return ret;
+
+    if (ent_json_idx >= json_array_size(ent_json_root)) {
+        *errnop = ENOENT;
+        return NSS_STATUS_NOTFOUND;
+    }
+    //printf("%s\n", json_dumps(json_array_get(ent_json_root, ent_json_idx), JSON_INDENT(2)));
 
     int pack_result = pack_group_struct(
         json_array_get(ent_json_root, ent_json_idx), result, buffer, buflen
@@ -228,14 +289,15 @@ _nss_aad_getgrgid_r_locked(gid_t gid, struct group *result, char *buffer, size_t
     json_t *group_object = json_object_get(group_root, "value");
     if (!json_is_array(group_object)) return -1;
     if (json_array_size(group_object) < 1) return -1;
-    for(int i = 0; i < json_array_size(group_object); i++)
-    {
-      json_t *entry_data = json_array_get(group_object, i);
+    //for(int i = 0; i < json_array_size(group_object); i++)
+    //{
+      json_t *entry_data = json_array_get(group_object, 0);
       j_gr_id= json_object_get(entry_data, "id");
       if (json_is_string(j_gr_id)) {
         snprintf(members_url, 512, "%s%s%s", "https://graph.microsoft.com/v1.0/groups/", json_string_value(j_gr_id), "/members?$select=id,extj8xolrvw_linux");
       }
-      json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), "extj8xolrvw_linux");
+      //json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), "extj8xolrvw_linux");
+      json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), 0), "extj8xolrvw_linux");
 
       membersresponse = nss_http_request(members_url, auth_header);
       members_root = json_loads(membersresponse, 0, &json_error);
@@ -249,7 +311,7 @@ _nss_aad_getgrgid_r_locked(gid_t gid, struct group *result, char *buffer, size_t
         json_array_append(memberlist, json_object_get(json_object_get(json_array_get(json_object_get(members_root, "value"), j), "extj8xolrvw_linux"), "user"));
       } 
       json_object_set(nested, "members", memberlist);
-    }
+    //}
     json_decref(members_root);
 
     if (!groupresponse) {
@@ -267,7 +329,8 @@ _nss_aad_getgrgid_r_locked(gid_t gid, struct group *result, char *buffer, size_t
         return NSS_STATUS_UNAVAIL;
     }
 
-    int pack_result = pack_group_struct(group_root, result, buffer, buflen);
+    //int pack_result = pack_group_struct(group_object, result, buffer, buflen);
+    int pack_result = pack_group_struct(entry_data, result, buffer, buflen);
 
     if (pack_result == -1) {
         json_decref(json_root);
@@ -335,14 +398,14 @@ _nss_aad_getgrnam_r_locked(const char *name, struct group *result, char *buffer,
     json_t *group_object = json_object_get(group_root, "value");
     if (!json_is_array(group_object)) return -1;
     if (json_array_size(group_object) < 1) return -1;
-    for(int i = 0; i < json_array_size(group_object); i++)
-    {
-      json_t *entry_data = json_array_get(group_object, i);
+    //for(int i = 0; i < json_array_size(group_object); i++)
+    //{
+      json_t *entry_data = json_array_get(group_object, 0);
       j_gr_id= json_object_get(entry_data, "id");
       if (json_is_string(j_gr_id)) {
         snprintf(members_url, 512, "%s%s%s", "https://graph.microsoft.com/v1.0/groups/", json_string_value(j_gr_id), "/members?$select=id,extj8xolrvw_linux");
       }
-      json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), "extj8xolrvw_linux");
+      json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), 0), "extj8xolrvw_linux");
 
       membersresponse = nss_http_request(members_url, auth_header);
       //printf("%s\n", membersresponse);
@@ -357,7 +420,7 @@ _nss_aad_getgrnam_r_locked(const char *name, struct group *result, char *buffer,
         json_array_append(memberlist, json_object_get(json_object_get(json_array_get(json_object_get(members_root, "value"), j), "extj8xolrvw_linux"), "user"));
       } 
       json_object_set(nested, "members", memberlist);
-    }
+    //}
     json_decref(members_root);
 
     if (!groupresponse) {
@@ -378,7 +441,8 @@ _nss_aad_getgrnam_r_locked(const char *name, struct group *result, char *buffer,
         return NSS_STATUS_UNAVAIL;
     }
 
-    int pack_result = pack_group_struct(group_root, result, buffer, buflen);
+    //int pack_result = pack_group_struct(group_object, result, buffer, buflen);
+    int pack_result = pack_group_struct(entry_data, result, buffer, buflen);
 
     if (pack_result == -1) {
         json_decref(json_root);
