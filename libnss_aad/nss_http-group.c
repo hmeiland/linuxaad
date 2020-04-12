@@ -19,28 +19,16 @@ pack_group_struct(json_t *passwd_object, struct group *result, char *buffer, siz
     size_t bufleft = buflen;
     json_t *j_gr_name, *j_gr_gid, *j_gr_mem, *j_member;
 
-    //printf("pack 1\n");
-    //json_t *passwd_object = json_object_get(grouproot, "value");
-    //printf("%s\n", json_dumps(passwd_object, JSON_INDENT(2)));
-    //if (!json_is_array(passwd_object)) return -1;
-    //printf("pack 1a\n");
-    //if (json_array_size(passwd_object) < 1) return -1;
-    //printf("pack 1b\n");
-    //for(int i = 0; i < json_array_size(passwd_object); i++)
-    //{
-      //json_t *entry_data = json_array_get(passwd_object, i);
-      json_t *extension_object = json_object_get(passwd_object, "extj8xolrvw_linux");
+    json_t *extension_object = json_object_get(passwd_object, "extj8xolrvw_linux");
 
-      j_gr_name = json_object_get(extension_object, "group");
-      j_gr_gid = json_object_get(extension_object, "gid");
-      j_gr_mem = json_object_get(extension_object, "members");
-    //}
+    j_gr_name = json_object_get(extension_object, "group");
+    j_gr_gid = json_object_get(extension_object, "gid");
+    j_gr_mem = json_object_get(extension_object, "members");
 
     if (!json_is_string(j_gr_name)) return -1;
     if (!json_is_integer(j_gr_gid)) return -1;
     if (!json_is_array(j_gr_mem)) return -1;
 
-    //printf("pack 2\n");
     memset(buffer, '\0', buflen);
 
     if (bufleft <= j_strlen(j_gr_name)) return -2;
@@ -53,7 +41,6 @@ pack_group_struct(json_t *passwd_object, struct group *result, char *buffer, siz
     next_buf += 2;
     bufleft -= 2;
 
-    //printf("pack 3\n");
     // Yay, ints are so easy!
     result->gr_gid = json_integer_value(j_gr_gid);
 
@@ -74,7 +61,6 @@ pack_group_struct(json_t *passwd_object, struct group *result, char *buffer, siz
       next_buf += strlen(result->gr_mem[i]) + 1;
       bufleft  -= strlen(result->gr_mem[i]) + 1;
     }
-    //printf("pack 4\n");
 
     return 0;
 }
@@ -83,7 +69,6 @@ pack_group_struct(json_t *passwd_object, struct group *result, char *buffer, siz
 enum nss_status
 _nss_aad_setgrent_locked(int stayopen)
 {
-    //printf("setgrent\n");
     char graph_url[512], token_url[512], token_postfield[512], auth_header[2048], members_url[512];
     const char *access_token;
     char *membersresponse;
@@ -139,20 +124,16 @@ _nss_aad_setgrent_locked(int stayopen)
       json_object_set(nested, "members", memberlist);
       json_decref(members_root);
     }
-    //printf("%s\n", json_dumps(group_object, JSON_INDENT(2)));
 
     if (!groupresponse) {
-        //*errnop = ENOENT;
         return NSS_STATUS_UNAVAIL;
     }
 
     if (!membersresponse) {
-        //*errnop = ENOENT;
         return NSS_STATUS_UNAVAIL;
     }
 
     if (!group_root) {
-        ///errnop = ENOENT;
         return NSS_STATUS_UNAVAIL;
     }
 
@@ -214,7 +195,6 @@ _nss_aad_getgrent_r_locked(struct group *result, char *buffer, size_t buflen, in
         *errnop = ENOENT;
         return NSS_STATUS_NOTFOUND;
     }
-    //printf("%s\n", json_dumps(json_array_get(ent_json_root, ent_json_idx), JSON_INDENT(2)));
 
     int pack_result = pack_group_struct(
         json_array_get(ent_json_root, ent_json_idx), result, buffer, buflen
@@ -231,10 +211,10 @@ _nss_aad_getgrent_r_locked(struct group *result, char *buffer, size_t buflen, in
     }
 
     // Return notfound when there's nothing else to read.
-    if (ent_json_idx >= json_array_size(ent_json_root)) {
-        *errnop = ENOENT;
-        return NSS_STATUS_NOTFOUND;
-    }
+    //if (ent_json_idx >= json_array_size(ent_json_root)) {
+    //    *errnop = ENOENT;
+    //    return NSS_STATUS_NOTFOUND;
+    //}
 
     ent_json_idx++;
     return NSS_STATUS_SUCCESS;
