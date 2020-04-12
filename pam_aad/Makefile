@@ -6,7 +6,8 @@ LIBRARY=pam_aad.so
 
 DESTDIR=/
 PREFIX=$(DESTDIR)/usr
-LIBDIR=/lib64/security/
+#LIBDIR=/lib64/security/
+LIBDIR=/lib/x86_64-linux-gnu/security/
 CONFDIR=$(DESTDIR)/etc/azuread
 CONFFILE=parameters.json.example
 BUILD=.libs
