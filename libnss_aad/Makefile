@@ -7,7 +7,9 @@ LINKS=libnss_aad.so.2 libnss_aad.so
 
 DESTDIR=/
 PREFIX=$(DESTDIR)/usr
-LIBDIR=$(PREFIX)/lib64
+#LIBDIR=$(PREFIX)/lib/x86_64-linux-gnu/
+LIBDIR=$(PREFIX)/lib/
+#LIBDIR=$(PREFIX)/lib64
 CONFDIR=$(DESTDIR)/etc/azuread
 CONFFILE=parameters.json.example
 BUILD=.libs
