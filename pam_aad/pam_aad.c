@@ -2,6 +2,8 @@
 #define PAM_SM_AUTH
 #include "nss_http.h"
 #include <security/pam_modules.h>
+#include <security/pam_appl.h>
+#include <security/pam_ext.h>
 
 
 static int device_login(const char *pam_user)
@@ -59,10 +61,10 @@ static int device_login(const char *pam_user)
   return 0;
 }
 
-
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
     const char *user;
+    pam_info(pamh, "authenticate aad");
 
     if (pam_get_user(pamh, &user, NULL) != PAM_SUCCESS) return PAM_AUTH_ERR;
 
@@ -87,3 +89,24 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags,
     return PAM_SUCCESS;
 }
 
+int
+pam_sm_open_session (pam_handle_t *pamh, int flags, int argc,
+		     const char **argv)
+{
+  return PAM_SUCCESS;
+}
+
+int
+pam_sm_close_session (pam_handle_t *pamh, int flags,
+		      int argc, const char **argv)
+{
+  return PAM_IGNORE;
+}
+
+int
+pam_sm_chauthtok (pam_handle_t *pamh, int flags, int argc,
+		  const char **argv)
+{
+    pam_info(pamh, "challenge authenticate aad");
+  return PAM_SUCCESS;
+}
