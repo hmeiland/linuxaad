@@ -61,10 +61,39 @@ static int device_login(const char *pam_user)
   return 0;
 }
 
+static int pam_converse(pam_handle_t *pamh, char *message, char **password) {
+   struct pam_conv *conv;
+   struct pam_message msg;
+   const struct pam_message *msgp;
+   struct pam_response *resp = NULL;
+   int retval;
+
+   retval = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
+   if (retval != PAM_SUCCESS) {
+      return retval;
+   }
+
+   msg.msg_style = PAM_PROMPT_ECHO_OFF;
+   msg.msg = message;
+   msgp = &msg;
+
+   retval = (*conv->conv)(1, &msgp, &resp, conv->appdata_ptr);
+   if (resp != NULL) {
+      if (retval == PAM_SUCCESS) *password = resp->resp;
+      else free(resp->resp);
+      free(resp);
+   }
+   else *password = NULL;
+
+   return retval;
+}
+
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
     const char *user;
+    char *pam_password = NULL;
     pam_info(pamh, "authenticate aad");
+    pam_converse (pamh, "LDAP Password: ", &pam_password);pam_converse (pamh, "LDAP Password: ", &pam_password);
 
     if (pam_get_user(pamh, &user, NULL) != PAM_SUCCESS) return PAM_AUTH_ERR;
 
