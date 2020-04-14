@@ -5,12 +5,39 @@
 #include <security/pam_appl.h>
 #include <security/pam_ext.h>
 
+static int pam_converse(pam_handle_t *pamh, char *message, char **password) {
+   struct pam_conv *conv;
+   struct pam_message msg;
+   const struct pam_message *msgp;
+   struct pam_response *resp = NULL;
+   int retval;
 
-static int device_login(const char *pam_user)
+   retval = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
+   if (retval != PAM_SUCCESS) {
+      return retval;
+   }
+
+   msg.msg_style = PAM_PROMPT_ECHO_OFF;
+   msg.msg = message;
+   msgp = &msg;
+
+   retval = (*conv->conv)(1, &msgp, &resp, conv->appdata_ptr);
+   if (resp != NULL) {
+      if (retval == PAM_SUCCESS) *password = resp->resp;
+      else free(resp->resp);
+      free(resp);
+   }
+   else *password = NULL;
+
+   return retval;
+}
+
+static int device_login(pam_handle_t *pamh, const char *pam_user)
 {
     char device_url[512], device_postfield[512];
     char token_url[512], token_postfield[512];
     char graph_url[512], auth_header[4096];
+    char *pam_password = NULL;
     json_t *json_root, *token_object;
     json_error_t json_error;
     
@@ -26,7 +53,8 @@ static int device_login(const char *pam_user)
 
     // print device code message
     json_root = json_loads(device_code, 0, &json_error);
-    printf("%s\n", json_string_value(json_object_get(json_root, "message")));
+    //printf("%s\n", json_string_value(json_object_get(json_root, "message")));
+    pam_converse (pamh, (char *)json_string_value(json_object_get(json_root, "message")) , &pam_password);
 
     // create poll request for token
     snprintf(token_url, 512, "%s/oauth2/v2.0/token", authority);
@@ -61,43 +89,16 @@ static int device_login(const char *pam_user)
   return 0;
 }
 
-static int pam_converse(pam_handle_t *pamh, char *message, char **password) {
-   struct pam_conv *conv;
-   struct pam_message msg;
-   const struct pam_message *msgp;
-   struct pam_response *resp = NULL;
-   int retval;
-
-   retval = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
-   if (retval != PAM_SUCCESS) {
-      return retval;
-   }
-
-   msg.msg_style = PAM_PROMPT_ECHO_OFF;
-   msg.msg = message;
-   msgp = &msg;
-
-   retval = (*conv->conv)(1, &msgp, &resp, conv->appdata_ptr);
-   if (resp != NULL) {
-      if (retval == PAM_SUCCESS) *password = resp->resp;
-      else free(resp->resp);
-      free(resp);
-   }
-   else *password = NULL;
-
-   return retval;
-}
-
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
     const char *user;
-    char *pam_password = NULL;
+    //char *pam_password = NULL;
     pam_info(pamh, "authenticate aad");
-    pam_converse (pamh, "LDAP Password: ", &pam_password);pam_converse (pamh, "LDAP Password: ", &pam_password);
+    //pam_converse (pamh, "LDAP Password: ", &pam_password);
 
     if (pam_get_user(pamh, &user, NULL) != PAM_SUCCESS) return PAM_AUTH_ERR;
 
-    int result = device_login(user);
+    int result = device_login(pamh, user);
   
     if (result == 0) return PAM_SUCCESS;
     if (result == -1) return PAM_AUTHINFO_UNAVAIL;
