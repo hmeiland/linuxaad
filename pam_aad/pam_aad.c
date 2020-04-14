@@ -38,6 +38,7 @@ static int device_login(pam_handle_t *pamh, const char *pam_user)
     char token_url[512], token_postfield[512];
     char graph_url[512], auth_header[4096];
     char *pam_password = NULL;
+    char pam_message[512];
     json_t *json_root, *token_object;
     json_error_t json_error;
     
@@ -54,7 +55,8 @@ static int device_login(pam_handle_t *pamh, const char *pam_user)
     // print device code message
     json_root = json_loads(device_code, 0, &json_error);
     //printf("%s\n", json_string_value(json_object_get(json_root, "message")));
-    pam_converse (pamh, (char *)json_string_value(json_object_get(json_root, "message")) , &pam_password);
+    snprintf(pam_message, 512, "%s\nAnd press Enter to continue....", json_string_value(json_object_get(json_root, "message")));
+    pam_converse (pamh, pam_message, &pam_password);
 
     // create poll request for token
     snprintf(token_url, 512, "%s/oauth2/v2.0/token", authority);
@@ -92,9 +94,6 @@ static int device_login(pam_handle_t *pamh, const char *pam_user)
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
     const char *user;
-    //char *pam_password = NULL;
-    pam_info(pamh, "authenticate aad");
-    //pam_converse (pamh, "LDAP Password: ", &pam_password);
 
     if (pam_get_user(pamh, &user, NULL) != PAM_SUCCESS) return PAM_AUTH_ERR;
 
@@ -133,10 +132,9 @@ pam_sm_close_session (pam_handle_t *pamh, int flags,
   return PAM_IGNORE;
 }
 
-int
-pam_sm_chauthtok (pam_handle_t *pamh, int flags, int argc,
-		  const char **argv)
-{
-    pam_info(pamh, "challenge authenticate aad");
-  return PAM_SUCCESS;
-}
+//int
+//pam_sm_chauthtok (pam_handle_t *pamh, int flags, int argc,
+//		  const char **argv)
+//{
+//  return PAM_SUCCESS;
+//}
