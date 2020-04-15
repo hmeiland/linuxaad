@@ -47,13 +47,13 @@ Also make sure to enable "PasswordAuthentication yes" in /etc/ssh/sshd_config.
 
 Both libraries use the /etc/azuread/parameters.json file to look up the tenant, the client-id. Libnss_aad also uses the client secret to get access to the user properties in Azure Active Directory.
 
-`{
-  "authority": "https://login.microsoftonline.com/<your AAD tenant name>",
-  "client_id": "<your client id>",
-  "scope": [ "https://graph.microsoft.com/.default" ],
-  "secret": "<your client secret>",
-  "endpoint": "https://graph.microsoft.com/v1.0/users"
-}`
+    {
+       "authority": "https://login.microsoftonline.com/<your AAD tenant name>",
+       "client_id": "<your client id>",
+       "scope": [ "https://graph.microsoft.com/.default" ],
+       "secret": "<your client secret>",
+       "endpoint": "https://graph.microsoft.com/v1.0/users"
+    }
 
 At this moment, selinux should be disbaled.
 
