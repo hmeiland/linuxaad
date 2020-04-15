@@ -38,10 +38,24 @@ Group members are obtained from the actual members in the AAD group; the members
 Libnss_aad.so.2.0 must be placed in /usr/lib64 for CentOS and to ensure compatibility, softlinks to libnss_aad.so and libnss_aad.so.2 should be created.
 In /etc/nsswitch.conf, aad must be added to the passwd, shadow and group entries.
 
+![nssswitch.conf](screenshots/nsswitch-conf.png)
+
 Pam_aad.so must be placed in /usr/lib64/security. To use pam_aad with ssh, add the line "auth sufficient pam_aad.so" to the /etc/pam.d/sshd file. 
 Also make sure to enable "PasswordAuthentication yes" in /etc/ssh/sshd_config.
 
+![sshd](screenshots/pam-d-sshd.png)
+
 Both libraries use the /etc/azuread/parameters.json file to look up the tenant, the client-id. Libnss_aad also uses the client secret to get access to the user properties in Azure Active Directory.
+
+`{
+  "authority": "https://login.microsoftonline.com/<your AAD tenant name>",
+  "client_id": "<your client id>",
+  "scope": [ "https://graph.microsoft.com/.default" ],
+  "secret": "<your client secret>",
+  "endpoint": "https://graph.microsoft.com/v1.0/users"
+}`
+
+At this moment, selinux should be disbaled.
 
 # build on work from others
 This code is based on a lot of the work of https://github.com/gmjosack/nss_http, which is originally licensed with MIT license.
