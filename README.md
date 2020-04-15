@@ -14,14 +14,22 @@ https://developer.microsoft.com/en-us/graph/graph-explorer?request=schemaExtensi
 
 The nss_aad lib looks at the following properties:
   * passwd lookups: 
-    * user (linux login name)
-    * passwd (advised to keep empty)
-    * uid (linux uid, must be unique)
-    * gidnumber (primary group gid)
-    * gecos (may be empty)
-    * homedir (e.g. /home/<user>)
-    * shell (e.g. /bin/bash)
+    * user (string, linux login name)
+    * passwd (string, advised to keep empty)
+    * uid (integer, linux uid, must be unique)
+    * gidnumber (integer, primary group gid)
+    * gecos (string, may be empty)
+    * homedir (string, e.g. /home/<user>)
+    * shell (string, e.g. /bin/bash)
 
+  * shadow lookups:
+    * user (string, linux login name)
+
+  * group lookups:
+    * group (string, linux group name)
+    * gid (integer, group gid)
+
+Group members are obtained from the actual members in the AAD group; the members field in the extension is not used.
 
 
 ## build on work from others
