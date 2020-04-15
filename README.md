@@ -7,10 +7,12 @@ Libs and utils for Azure Active Directory support for Linux.
 ![login with ssh and device code](screenshots/login.png)
 ![showing ls, id and getent](screenshots/ls-id-getent.png)
 
-# Azure Active Directory
+# Azure Active Directory Schema Extnsion
 
 To host the linux properties in Azure Active Directory, the following schema extension is used:
-https://developer.microsoft.com/en-us/graph/graph-explorer?request=schemaExtensions/extj8xolrvw_linux&method=GET&version=v1.0&GraphUrl=https://graph.microsoft.com
+https://developer.microsoft.com/en-us/graph/graph-explorer?request=schemaExtensions/extj8xolrvw_linux&method=GET&version=v1.0&GraphUrl=https://graph.microsoft.com.
+This extension is now in status Available and thus usable in any Azure Active Directory Tenant.
+
 
 The nss_aad lib looks at the following properties:
   * passwd lookups: 
@@ -19,7 +21,7 @@ The nss_aad lib looks at the following properties:
     * uid (integer, linux uid, must be unique)
     * gidnumber (integer, primary group gid)
     * gecos (string, may be empty)
-    * homedir (string, e.g. /home/<user>)
+    * homedir (string, e.g. /home/\<user\>)
     * shell (string, e.g. /bin/bash)
 
   * shadow lookups:
