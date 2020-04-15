@@ -55,7 +55,7 @@ Both libraries use the /etc/azuread/parameters.json file to look up the tenant, 
        "endpoint": "https://graph.microsoft.com/v1.0/users"
     }
 
-At this moment, selinux should be disbaled.
+At this moment, selinux should be disabled.
 
 # build on work from others
 This code is based on a lot of the work of https://github.com/gmjosack/nss_http, which is originally licensed with MIT license.
