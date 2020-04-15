@@ -192,42 +192,7 @@ void update_user(char *name, char * id, int uid)
     }
     json_decref(json_root);
     
-    //search for max uid
-    /*snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$select=id,userPrincipalName,mail,extj8xolrvw_linux");
-
-    char *search_max_uid = nss_http_request(graph_url, auth_header);
-
-    json_root = json_loads(search_max_uid, 0, &json_error);
-    json_t *passwd_object = json_object_get(json_root, "value");
-    
-    int max_uid = 25000;
-    for(int i = 0; i < json_array_size(passwd_object); i++)
-    {
-      json_t *entry_data = json_array_get(passwd_object, i);
-      j_id = json_object_get(entry_data, "id");
-      j_principal = json_object_get(entry_data, "userPrincipalName");
-      j_mail = json_object_get(entry_data, "mail");
-
-      json_t *extension_object = json_object_get(entry_data, "extj8xolrvw_linux");
-
-      j_uid = json_object_get(extension_object, "uid");
-      j_user = json_object_get(extension_object, "user");
-
-      if (json_integer_value(j_uid)) {
-        if (json_integer_value(j_uid) > max_uid) max_uid = json_integer_value(j_uid);
-      }
-
-      if (json_string_value(j_user)) {
-        if(!strcmp(name, json_string_value(j_user))) {
-          printf("username already exists: %s\n", json_string_value(j_user));
-          exit(1);
-        }
-      } 
-    }
-    json_decref(json_root);
-    max_uid++;
-    */
-    // do add user
+    // do update user
     snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users/%s", id);
     if (uid > -1)
     { 
