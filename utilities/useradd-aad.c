@@ -207,6 +207,7 @@ void print_usage()
     printf("Usage: useradd-aad [options] <user>\n");
     printf("  --list: 	list all AAD users and their linux properties\n");
     printf("  --passwd:	list linux AAD users in passwd format\n");
+    printf("  --update [--home-dir] <user>\n");
 }
 
 int main(int argc, char *argv[])
@@ -218,11 +219,11 @@ int main(int argc, char *argv[])
   static struct option long_options[] = {
     {"list",      no_argument,       0, 'l' },
     {"add",       no_argument,       0, 'a' },
-    {"update",    no_argument,       0, 'u' },
+    {"update",    no_argument,       0, 't' },
     {"passwd",    no_argument,       0, 'p' },
     {"id",        required_argument, 0, 'i' },
-    {"uid",       required_argument, 0, 'v' },
-    {"homedir",   required_argument, 0, 'h' },
+    {"uid",       required_argument, 0, 'u' },
+    {"home-dir",  required_argument, 0, 'd' },
     {0,           0,                 0,  0  }
   };
 
@@ -236,10 +237,10 @@ int main(int argc, char *argv[])
       case 'p' : 
 	passwd = 1;
         break;
-      case 'u' : 
+      case 't' : 
 	update = 1;
         break;
-      case 'v' : 
+      case 'u' : 
 	uid = atoi(optarg);
         break;
       case 'l' : 
@@ -248,7 +249,7 @@ int main(int argc, char *argv[])
       case 'i' : 
         id = optarg;
         break;
-      case 'h' : 
+      case 'd' : 
         homedir = optarg;
         break;
       default : printf("%s\n", optarg);
