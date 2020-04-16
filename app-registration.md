@@ -31,7 +31,7 @@ Now also press 'Grant admin consent for \<tenant\>' to approve the permissions f
 ![apps](screenshots/app-permission-consent.png)
 
 The last step is to enable the app to be used for Authentication, go to the 'Authentication' tab; scroll down to Advanced settings and switch the knob for 'Treat application as public client' to 'yes'.
-![apps](screenshots/app-authentication.png)
+![apps](screenshots/apps-authentication.png)
 
 Now your ready to go!
 ![apps](screenshots/app-permission-consent-granted.png)
