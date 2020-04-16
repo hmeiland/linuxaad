@@ -9,7 +9,7 @@ Libnss, pam and utils for Azure Active Directory support for Linux.
 
 ## Azure Active Directory Schema Extension
 
-To host the linux properties in Azure Active Directory, the following schema extension is used:
+To host the linux properties in Azure Active Directory (Microsoft Graph), the following schema extension is used:
 https://developer.microsoft.com/en-us/graph/graph-explorer?request=schemaExtensions/extj8xolrvw_linux&method=GET&version=v1.0&GraphUrl=https://graph.microsoft.com.
 This extension is now in status Available and thus usable in any Azure Active Directory Tenant.
 
@@ -32,6 +32,12 @@ The libnss_aad lib looks at the following properties:
     * gid (integer, group gid)
 
 Group members are obtained from the actual members in the AAD group; the members field in the extension is not used.
+
+## App registration
+
+To give the libnss_aad and pam_aad libraries access to the Azure Active Directory (Microsoft Graph), they should be registred as apps and given permission to read user properties. 
+This can be done through the Azure Portal. The steps required are described here: [App Registration](app-registration.md)
+![apps](screenshots/registered-apps.png)
 
 ## installing and enabling
 
