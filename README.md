@@ -37,6 +37,7 @@ Group members are obtained from the actual members in the AAD group; the members
 
 To give the libnss_aad and pam_aad libraries access to the Azure Active Directory (Microsoft Graph), they should be registred as apps and given permission to read user properties. 
 This can be done through the Azure Portal. The steps required are described here: [App Registration](app-registration.md)
+
 ![apps](screenshots/registered-apps.png)
 
 ## installing and enabling
@@ -51,6 +52,7 @@ Also make sure to enable "PasswordAuthentication yes" in /etc/ssh/sshd_config.
 
 ![sshd](screenshots/pam-d-sshd.png)
 
+To make it easy to deploy, an rpm has been created which basicly does all the above steps. See [linuxaad-0.1-2.x86_64.rpm](https://github.com/hmeiland/linuxaad/releases/download/v0.1/linuxaad-0.1-2.x86_64.rpm)
 Both libraries use the /etc/azuread/parameters.json file to look up the tenant, the client-id. Libnss_aad also uses the client secret to get access to the user properties in Azure Active Directory.
 
     {
