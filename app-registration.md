@@ -30,6 +30,9 @@ it is best practise to keep the limits as tight as possible. Now press 'Add perm
 Now also press 'Grant admin consent for \<tenant\>' to approve the permissions for the whole tenant. 
 ![apps](screenshots/app-permission-consent.png)
 
+The last step is to enable the app to be used for Authentication, go to the 'Authentication' tab; scroll down to Advanced settings and switch the knob for 'Treat application as public client' to 'yes'.
+![apps](screenshots/app-authentication.png)
+
 Now your ready to go!
 ![apps](screenshots/app-permission-consent-granted.png)
 
