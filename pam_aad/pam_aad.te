@@ -1,0 +1,50 @@
+module pam_aad 1.0;
+
+require {
+	type http_port_t;
+	type sshd_t;
+	class tcp_socket name_connect;
+}
+
+#============= sshd_t ==============
+allow sshd_t http_port_t:tcp_socket name_connect;
+
+require {
+	type sshd_t;
+	type cert_t;
+	class dir write;
+}
+
+#============= sshd_t ==============
+allow sshd_t cert_t:dir write;
+
+
+require {
+	type chkpwd_t;
+	type http_port_t;
+	class tcp_socket name_connect;
+}
+
+#============= chkpwd_t ==============
+allow chkpwd_t http_port_t:tcp_socket name_connect;
+
+
+require {
+	type http_port_t;
+	type groupadd_t;
+	class tcp_socket name_connect;
+}
+
+#============= groupadd_t ==============
+allow groupadd_t http_port_t:tcp_socket name_connect;
+
+
+
+require {
+	type oddjob_t;
+	type rpm_script_t;
+	class dbus send_msg;
+}
+
+#============= oddjob_t ==============
+allow oddjob_t rpm_script_t:dbus send_msg;
