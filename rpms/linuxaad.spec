@@ -1,16 +1,18 @@
 Name:       linuxaad
-Version:    0.1
-Release:    2
+Version:    0.2.1
+Release:    1
 Summary:    Libraries for pam and nss to use Azure Active Directory
 License:    MSFT Open Source
 
 URL:        https://github.com/hmeiland/linuxaad
-Source0:    v0.1.tar.gz
+Source0:    v0.2.1.tar.gz
 
 BuildRequires: gcc
 BuildRequires: pam-devel
 BuildRequires: libcurl-devel
 BuildRequires: jansson-devel
+
+Requires: policycoreutils
 
 
 %description
@@ -30,20 +32,24 @@ mkdir -p ${RPM_BUILD_ROOT}/usr/lib64/security
 install pam_aad/.libs/pam_aad.so ${RPM_BUILD_ROOT}/usr/lib64/security/pam_aad.so
 mkdir -p ${RPM_BUILD_ROOT}/etc/azuread
 install libnss_aad/parameters.json.example ${RPM_BUILD_ROOT}/etc/azuread/parameters.json.example
+mkdir -p ${RPM_BUILD_ROOT}/usr/share/selinux/packages
+install pam_aad/pam_aad.pp ${RPM_BUILD_ROOT}/usr/share/selinux/packages/pam_aad.pp
+install pam_aad/pam_aad.te ${RPM_BUILD_ROOT}/usr/share/selinux/packages/pam_aad.te
+mkdir -p ${RPM_BUILD_ROOT}/usr/sbin
+install rpms/enable_libnss_pam_aad.sh ${RPM_BUILD_ROOT}/usr/sbin/enable_libnss_pam_aad.sh
+chmod 700 ${RPM_BUILD_ROOT}/usr/sbin/enable_libnss_pam_aad.sh
 
 %files
 /usr/lib64/libnss_aad.so.2.0
 /usr/lib64/security/pam_aad.so
 /etc/azuread/parameters.json.example
+/usr/share/selinux/packages/pam_aad.pp
+/usr/share/selinux/packages/pam_aad.te
+/usr/sbin/enable_libnss_pam_aad.sh
 
 %post
-sed -i '/^passwd: / s/$/ aad/' /etc/nsswitch.conf
-sed -i '/^shadow: / s/$/ aad/' /etc/nsswitch.conf
-sed -i '/^group: / s/$/ aad/' /etc/nsswitch.conf
-sed -i '/#%PAM-1.0/ s/$/\nauth sufficient pam_aad.so/' /etc/pam.d/sshd
-sed -i 's/^PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-sed -i 's/^ChallengeResponseAuthentication .*/ChallengeResponseAuthentication yes/' /etc/ssh/sshd_config
 ln -s /usr/lib64/libnss_aad.so.2.0 /usr/lib64/libnss_aad.so.2
 ln -s /usr/lib64/libnss_aad.so.2.0 /usr/lib64/libnss_aad.so
+semodule -i /usr/share/selinux/packages/pam_aad.pp
 
 %changelog
