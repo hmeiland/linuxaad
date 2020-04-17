@@ -102,7 +102,7 @@ _nss_aad_setspent_locked(int stayopen)
     }
     json_decref(json_root);
 
-    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$select=id,extj8xolrvw_linux");
+    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=extj8xolrvw_linux/uid%%20ge%%20%%2725000%%27&$select=id,extj8xolrvw_linux");
 
     char *response = nss_http_request(graph_url, auth_header);
     
