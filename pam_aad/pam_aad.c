@@ -54,7 +54,6 @@ static int device_login(pam_handle_t *pamh, const char *pam_user)
 
     // print device code message
     json_root = json_loads(device_code, 0, &json_error);
-    //printf("%s\n", json_string_value(json_object_get(json_root, "message")));
     snprintf(pam_message, 512, "%s\nAnd press Enter to continue....", json_string_value(json_object_get(json_root, "message")));
     pam_converse (pamh, pam_message, &pam_password);
 
@@ -63,10 +62,13 @@ static int device_login(pam_handle_t *pamh, const char *pam_user)
     snprintf(token_postfield, 512, "grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=%s&device_code=%s", client_id, json_string_value(json_object_get(json_root, "device_code")));
     json_decref(json_root);
 
-    // poll for token, check for valid access code
+    printf("%s\n", token_url);
+    printf("%s\n", token_postfield);
+    // poll for token, check for valid access code : 18 * 5 seconds up to max token lifetime of 90 seconds
     for (int i = 0; i < 18; ++i)
     {
     char *token = nss_http_token_request(token_url, token_postfield);
+    printf("%s\n", token);
     json_root = json_loads(token, 0, &json_error);
     token_object = json_object_get(json_root, "access_token");
     if (json_is_string(token_object)) break;
@@ -131,10 +133,3 @@ pam_sm_close_session (pam_handle_t *pamh, int flags,
 {
   return PAM_IGNORE;
 }
-
-//int
-//pam_sm_chauthtok (pam_handle_t *pamh, int flags, int argc,
-//		  const char **argv)
-//{
-//  return PAM_SUCCESS;
-//}

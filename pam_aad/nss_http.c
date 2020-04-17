@@ -51,8 +51,8 @@ nss_http_token_request(const char *token_url, const char *token_postfield)
     char *data = NULL;
     long code;
 
-    //printf("nss_http_token_request url %s\n", token_url);
-    //printf("nss_http_token_request post %s\n", token_postfield);
+    printf("nss_http_token_request url %s\n", token_url);
+    printf("nss_http_token_request post %s\n", token_postfield);
 
     curl_global_init(CURL_GLOBAL_ALL);
     curl = curl_easy_init();
@@ -68,7 +68,7 @@ nss_http_token_request(const char *token_url, const char *token_postfield)
     headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, token_postfield);
-    //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_response);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_result);
@@ -77,7 +77,7 @@ nss_http_token_request(const char *token_url, const char *token_postfield)
     if(status != 0) goto error;
 
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
-    if(code != 200 && code != 400) goto error;
+    if(code != 200 && code != 400 && code!= 401) goto error;
 
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
