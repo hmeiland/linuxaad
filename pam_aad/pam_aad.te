@@ -48,3 +48,14 @@ require {
 
 #============= oddjob_t ==============
 allow oddjob_t rpm_script_t:dbus send_msg;
+
+require {
+        type oddjob_mkhomedir_t;
+        type http_port_t;
+        class tcp_socket name_connect;
+}
+
+#============= oddjob_mkhomedir_t ==============
+
+#!!!! This avc can be allowed using the boolean 'nis_enabled'
+allow oddjob_mkhomedir_t http_port_t:tcp_socket name_connect;
