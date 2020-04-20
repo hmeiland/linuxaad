@@ -161,13 +161,13 @@ void add_user(char *name, char *id)
 
     // do add user
     snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users/%s", id);
-    snprintf(patch, 1024, "{\"extj8xolrvw_linux\":{\"uid\":%i,\"gidnumber\":25000,\"shell\":\"/bin/bash\",\"homedir\":\"/home/%s\",\"user\":\"%s\"}}", max_uid, name, name);
+    snprintf(patch, 1024, "{\"extj8xolrvw_linux\":{\"uid\":%i,\"gidnumber\":25001,\"shell\":\"/bin/bash\",\"homedir\":\"/home/%s\",\"user\":\"%s\"}}", max_uid, name, name);
 
     char *response = nss_http_patch_request(graph_url, auth_header, patch);
 }
 
 
-void update_user(char *name, char * id, int uid) 
+void update_user(char *name, char * id, int uid, int gidnumber) 
 {
     char graph_url[512], token_url[512], token_postfield[512], auth_header[2048], patch[1024];
     const char * access_token;
@@ -199,6 +199,11 @@ void update_user(char *name, char * id, int uid)
       snprintf(patch, 1024, "{\"extj8xolrvw_linux\":{\"uid\":%i}}", uid);
       char *response = nss_http_patch_request(graph_url, auth_header, patch);
     }
+    if (gidnumber > -1)
+    { 
+      snprintf(patch, 1024, "{\"extj8xolrvw_linux\":{\"gidnumber\":%i}}", gidnumber);
+      char *response = nss_http_patch_request(graph_url, auth_header, patch);
+    }
     exit(0);
 }
 
@@ -213,7 +218,7 @@ void print_usage()
 int main(int argc, char *argv[])
 {
   int opt = 0, add = 0, list = 0, passwd = 0, update = 0;
-  int uid = -1;
+  int uid = -1, gidnumber = -1;
   char *id, *name, *homedir;
 
   static struct option long_options[] = {
@@ -223,6 +228,7 @@ int main(int argc, char *argv[])
     {"passwd",    no_argument,       0, 'p' },
     {"id",        required_argument, 0, 'i' },
     {"uid",       required_argument, 0, 'u' },
+    {"gidnumber", required_argument, 0, 'g' },
     {"home-dir",  required_argument, 0, 'd' },
     {0,           0,                 0,  0  }
   };
@@ -242,6 +248,9 @@ int main(int argc, char *argv[])
         break;
       case 'u' : 
 	uid = atoi(optarg);
+        break;
+      case 'g' : 
+	gidnumber = atoi(optarg);
         break;
       case 'l' : 
         list = 1;
@@ -268,7 +277,7 @@ int main(int argc, char *argv[])
   name = argv[optind];
 
   if (add == 1 && name && id) add_user(name, id); 
-  if (update == 1 && name && id && uid) update_user(name, id, uid); 
+  if (update == 1 && name && id && uid && gidnumber) update_user(name, id, uid, gidnumber); 
 
   return 0;
 }
