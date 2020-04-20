@@ -1,7 +1,8 @@
 CC=gcc
 CFLAGS=-Wall -Wstrict-prototypes -Werror -fPIC -std=c99
 
-EXEC=useradd-aad
+USEREXEC=useradd-aad
+GROUPEXEC=groupadd-aad
 
 DESTDIR=/
 PREFIX=$(DESTDIR)/usr
@@ -11,14 +12,20 @@ CONFFILE=parameters.json.example
 BUILD=.libs
 
 default: build
-build: useradd-aad 
+build: useradd-aad groupadd-aad 
 
-useradd-aad_build_dir:
+build_dir:
 	[ -d $(BUILD) ] || mkdir $(BUILD)
 
-useradd-aad: useradd-aad_build_dir
+useradd-aad: build_dir
 	$(CC) $(CFLAGS) -c nss_http.c -o $(BUILD)/nss_http.o
-	$(CC) $(EXEC).c -o $(BUILD)/$(EXEC) \
+	$(CC) $(USEREXEC).c -o $(BUILD)/$(USEREXEC) \
+		$(BUILD)/nss_http.o \
+        	-lcurl -ljansson -I.
+
+groupadd-aad: build_dir
+	$(CC) $(CFLAGS) -c nss_http.c -o $(BUILD)/nss_http.o
+	$(CC) $(GROUPEXEC).c -o $(BUILD)/$(GROUPEXEC) \
 		$(BUILD)/nss_http.o \
         	-lcurl -ljansson -I.
 
@@ -28,7 +35,8 @@ clean:
 install:
 	mkdir -p $(CONFDIR)
 	cp $(CONFFILE) $(CONFDIR)/$(CONFFILE)
-	cp $(BUILD)/$(EXEC) $(BINDIR)/$(EXEC)
+	cp $(BUILD)/$(USEREXEC) $(BINDIR)/$(USEREXEC)
+	cp $(BUILD)/$(GROUPEXEC) $(BINDIR)/$(GROUPEXEC)
 	
 
 .PHONY: clean install nss_http_build_dir nss_http
