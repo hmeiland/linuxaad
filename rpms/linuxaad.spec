@@ -1,6 +1,6 @@
 Name:       linuxaad
 Version:    0.2.1
-Release:    1
+Release:    3
 Summary:    Libraries for pam and nss to use Azure Active Directory
 License:    MSFT Open Source
 
@@ -11,6 +11,8 @@ BuildRequires: gcc
 BuildRequires: pam-devel
 BuildRequires: libcurl-devel
 BuildRequires: jansson-devel
+BuildRequires: checkpolicy
+BuildRequires: policycoreutils-python
 
 Requires: policycoreutils
 
@@ -22,7 +24,11 @@ Libraries for pam and nss to use Azure Active Directory for directory and authen
 %setup
 
 %build
-cd pam_aad; make; cd ..
+cd pam_aad
+  make
+  checkmodule -M -m -o pam_aad.mod pam_aad.te
+  semodule_package -o pam_aad.pp -m pam_aad.mod
+  cd ..
 cd libnss_aad; make; cd ..
 
 %install
