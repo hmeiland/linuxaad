@@ -33,6 +33,10 @@ The libnss_aad lib looks at the following properties:
 
 Group members are obtained from the actual members in the AAD group; the members field in the extension is not used.
 
+## Utilities for modifying the schema
+
+To enable and use the schema extension properties for users and groups, some utilities have been created. These utilities are described here: [Utilities](utilities.md)
+
 ## App registration
 
 To give the libnss_aad and pam_aad libraries access to the Azure Active Directory (Microsoft Graph), they should be registred as apps and given permission to read user properties. 
