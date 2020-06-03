@@ -167,7 +167,7 @@ void add_user(char *name, char *id)
 }
 
 
-void update_user(char *name, char * id, int uid, int gidnumber) 
+void update_user(char* name, char* id, int uid, int gidnumber, char* homedir) 
 {
     char graph_url[512], token_url[512], token_postfield[512], auth_header[2048], patch[1024];
     const char * access_token;
@@ -204,6 +204,13 @@ void update_user(char *name, char * id, int uid, int gidnumber)
       snprintf(patch, 1024, "{\"extj8xolrvw_linux\":{\"gidnumber\":%i}}", gidnumber);
       char *response = nss_http_patch_request(graph_url, auth_header, patch);
     }
+    int homedirupdate = strcmp(homedir, "not-set");
+    if (homedirupdate)
+    {
+      snprintf(patch, 1024, "{\"extj8xolrvw_linux\":{\"homedir\": \"%s\"}}", homedir);
+      char *response = nss_http_patch_request(graph_url, auth_header, patch);
+    }
+
     exit(0);
 }
 
@@ -219,7 +226,7 @@ int main(int argc, char *argv[])
 {
   int opt = 0, add = 0, list = 0, passwd = 0, update = 0;
   int uid = -1, gidnumber = -1;
-  char *id, *name, *homedir;
+  char *id, *name, *homedir = "not-set";
 
   static struct option long_options[] = {
     {"list",      no_argument,       0, 'l' },
@@ -277,7 +284,7 @@ int main(int argc, char *argv[])
   name = argv[optind];
 
   if (add == 1 && name && id) add_user(name, id); 
-  if (update == 1 && name && id && uid && gidnumber) update_user(name, id, uid, gidnumber); 
+  if (update == 1 && name && id && uid && gidnumber && homedir) update_user(name, id, uid, gidnumber, homedir); 
 
   return 0;
 }
