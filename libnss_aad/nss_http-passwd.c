@@ -382,3 +382,18 @@ _nss_aad_getpwnam_r(const char *name, struct passwd *result, char *buffer, size_
     return ret;
 }
 
+// Find a passwd by name
+struct passwd*
+_nss_aad_getpwnam(const char *name)
+{
+    //enum nss_status ret;
+    struct passwd *result = NULL;
+    char *buffer = 0;
+    size_t buflen = 0;
+    int *errnop = 0;
+    NSS_HTTP_LOCK();
+    _nss_aad_getpwnam_r_locked(name, result, buffer, buflen, errnop);
+    NSS_HTTP_UNLOCK();
+    return result;
+}
+
