@@ -51,9 +51,9 @@ pack_passwd_struct(json_t *entry_data, struct passwd *result, char *buffer, size
     if (json_is_null(j_pw_passwd))
     {
       if (bufleft <= 1) return -2;
-      result->pw_passwd = strncpy(next_buf, "x", 1);
-      next_buf += 1;
-      bufleft -= 1;
+      result->pw_passwd = strncpy(next_buf, "x", bufleft);
+      next_buf += strlen("x") + 1;
+      bufleft -= strlen("x") + 1;
     } else {
       if (bufleft <= j_strlen(j_pw_passwd)) return -2;
       result->pw_passwd = strncpy(next_buf, json_string_value(j_pw_passwd), bufleft);
@@ -67,9 +67,9 @@ pack_passwd_struct(json_t *entry_data, struct passwd *result, char *buffer, size
     if (json_is_null(j_pw_gecos))
     {
         if (bufleft <= 1) return -2;
-        result->pw_gecos = strncpy(next_buf, "", 1);
-        next_buf += 1;
-        bufleft -= 1;
+        result->pw_gecos = strncpy(next_buf, "...", bufleft);
+        next_buf += strlen("...") + 1;
+        bufleft -= strlen("...") + 1;
     } else {
         if (bufleft <= j_strlen(j_pw_gecos)) return -2;
         result->pw_gecos = strncpy(next_buf, json_string_value(j_pw_gecos), bufleft);
@@ -380,20 +380,5 @@ _nss_aad_getpwnam_r(const char *name, struct passwd *result, char *buffer, size_
     ret = _nss_aad_getpwnam_r_locked(name, result, buffer, buflen, errnop);
     NSS_HTTP_UNLOCK();
     return ret;
-}
-
-// Find a passwd by name
-struct passwd*
-_nss_aad_getpwnam(const char *name)
-{
-    //enum nss_status ret;
-    struct passwd *result = NULL;
-    char *buffer = 0;
-    size_t buflen = 0;
-    int *errnop = 0;
-    NSS_HTTP_LOCK();
-    _nss_aad_getpwnam_r_locked(name, result, buffer, buflen, errnop);
-    NSS_HTTP_UNLOCK();
-    return result;
 }
 
