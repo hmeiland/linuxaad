@@ -1,6 +1,6 @@
 Name:       linuxaad
-Version:    0.2.1
-Release:    3
+Version:    0.3
+Release:    1
 Summary:    Libraries for pam and nss to use Azure Active Directory
 License:    MSFT Open Source
 
