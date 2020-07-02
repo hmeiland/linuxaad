@@ -19,7 +19,7 @@ build_dir:
 
 useradd-aad: build_dir
 	$(CC) $(CFLAGS) -c nss_http.c -o $(BUILD)/nss_http.o
-	$(CC) $(USEREXEC).c -o $(BUILD)/$(USEREXEC) \
+	$(CC) $(CFLAGS) $(USEREXEC).c -o $(BUILD)/$(USEREXEC) \
 		$(BUILD)/nss_http.o \
         	-lcurl -ljansson -I.
 
