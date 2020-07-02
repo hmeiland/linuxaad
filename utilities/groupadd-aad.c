@@ -82,11 +82,13 @@ exit(0);
 
 void add_group(char *name, char *id) 
 {
+    int debug = 0;
     char graph_url[512], token_url[512], token_postfield[512], auth_header[2048], patch[1024];
     const char * access_token;
     json_t *json_root;
     json_error_t json_error;
-    json_t *j_id, *j_group, *j_displayname, *j_gid;
+    //json_t *j_id, *j_group, *j_displayname, *j_gid;
+    json_t *j_group, *j_gid;
 
     char *client_id = nss_read_config("client_id");
     char *secret = nss_read_config("secret");
@@ -117,8 +119,8 @@ void add_group(char *name, char *id)
     for(int i = 0; i < json_array_size(group_object); i++)
     {
       json_t *entry_data = json_array_get(group_object, i);
-      j_id = json_object_get(entry_data, "id");
-      j_displayname = json_object_get(entry_data, "displayName");
+      //j_id = json_object_get(entry_data, "id");
+      //j_displayname = json_object_get(entry_data, "displayName");
 
       json_t *extension_object = json_object_get(entry_data, "extj8xolrvw_linux");
 
@@ -144,16 +146,18 @@ void add_group(char *name, char *id)
     snprintf(patch, 1024, "{\"extj8xolrvw_linux\":{\"gid\":%i,\"group\":\"%s\"}}", max_gid, name);
 
     char *response = nss_http_patch_request(graph_url, auth_header, patch);
+    if (debug) printf("debug: %s\n", response);
 }
 
 
 void update_user(char *name, char * id, int uid) 
 {
+    int debug = 0;
     char graph_url[512], token_url[512], token_postfield[512], auth_header[2048], patch[1024];
     const char * access_token;
     json_t *json_root;
     json_error_t json_error;
-    json_t *j_id, *j_mail, *j_principal, *j_user, *j_pw_passwd, *j_uid, *j_gidnumber, *j_pw_gecos, *j_homedir, *j_shell;
+    //json_t *j_id, *j_mail, *j_principal, *j_user, *j_pw_passwd, *j_uid, *j_gidnumber, *j_pw_gecos, *j_homedir, *j_shell;
 
     char *client_id = nss_read_config("client_id");
     char *secret = nss_read_config("secret");
@@ -178,11 +182,12 @@ void update_user(char *name, char * id, int uid)
     { 
       snprintf(patch, 1024, "{\"extj8xolrvw_linux\":{\"uid\":%i}}", uid);
       char *response = nss_http_patch_request(graph_url, auth_header, patch);
+      if (debug) printf("debug: %s\n", response);
     }
     exit(0);
 }
 
-void print_usage() 
+void print_usage(void) 
 {
     printf("Usage: groupadd-aad [options] <group>\n");
     printf("  --list: 	list all AAD groups and their linux properties\n");
@@ -193,7 +198,7 @@ int main(int argc, char *argv[])
 {
   int opt = 0, add = 0, list = 0, passwd = 0, update = 0;
   int uid = -1;
-  char *id, *name, *homedir;
+  char *id, *name;
 
   static struct option long_options[] = {
     {"list",      no_argument,       0, 'l' },
@@ -202,7 +207,7 @@ int main(int argc, char *argv[])
     {"passwd",    no_argument,       0, 'p' },
     {"id",        required_argument, 0, 'i' },
     {"uid",       required_argument, 0, 'u' },
-    {"home-dir",  required_argument, 0, 'd' },
+    //{"home-dir",  required_argument, 0, 'd' },
     {0,           0,                 0,  0  }
   };
 
@@ -228,9 +233,9 @@ int main(int argc, char *argv[])
       case 'i' : 
         id = optarg;
         break;
-      case 'd' : 
-        homedir = optarg;
-        break;
+      //case 'd' : 
+        //homedir = optarg;
+        //break;
       default : printf("%s\n", optarg);
         //print_usage(); 
         exit(EXIT_FAILURE);

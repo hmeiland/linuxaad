@@ -25,7 +25,7 @@ useradd-aad: build_dir
 
 groupadd-aad: build_dir
 	$(CC) $(CFLAGS) -c nss_http.c -o $(BUILD)/nss_http.o
-	$(CC) $(GROUPEXEC).c -o $(BUILD)/$(GROUPEXEC) \
+	$(CC) $(CFLAGS) $(GROUPEXEC).c -o $(BUILD)/$(GROUPEXEC) \
 		$(BUILD)/nss_http.o \
         	-lcurl -ljansson -I.
 
