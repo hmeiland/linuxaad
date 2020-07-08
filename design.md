@@ -20,19 +20,19 @@ To provide a consistent user and group information on different linux machines, 
 With the introduction of Azure Active Directory, an new protocol for directory information is being introduced: Microsoft Graph over HTTPS.
 
 # NSS flow for user entries 
-'''
+```
 nsswitch.conf: 
 passwd:     files
 
 getent passwd user -> libnss_files -> 
   open /etc/passwd -> search line for user
   fill_passwd_struct -> user:x:1000:1000::/home/user:/bin/bash
-'''
-'''
+```
+```
 nsswitch.conf:
 passwd:     aad
 getent passwd user -> libnss_aad ->
   open /etc/azuread/parameters.conf for app_id and secret ->
   get_bearer_token -> graph?filter='username=user' -> 
   fill_passwd_struct from json -> user:x:1000:1000::/home/user:/bin/bash 
-'''
+```
