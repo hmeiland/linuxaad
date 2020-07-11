@@ -10,6 +10,8 @@ Linux uses the Name Service Switch framework to allow applications to look up in
  - home directory
  - shell  
 
+For a more complete description of the passwd struct see https://man7.org/linux/man-pages/man5/passwd.5.html.
+
 # Pluggable Authentication Mechanism
 
 The Plugable Authentication Mechanism (PAM) is a framework where new sessions can verify authentication and authorization of users.
@@ -25,7 +27,7 @@ nsswitch.conf:
 passwd:     files
 
 getent passwd user -> libnss_files -> 
-  open /etc/passwd -> search line for user
+  open /etc/passwd -> search line for user ->
   fill_passwd_struct -> user:x:1000:1000::/home/user:/bin/bash
 ```
 ```
@@ -36,3 +38,42 @@ getent passwd user -> libnss_aad ->
   get_bearer_token -> graph?filter='username=user' -> 
   fill_passwd_struct from json -> user:x:1000:1000::/home/user:/bin/bash 
 ```
+```
+nsswitch.conf:
+passwd:     aad
+getent passwd 1000 -> libnss_aad ->
+  open /etc/azuread/parameters.conf for app_id and secret ->
+  get_bearer_token -> graph.microsoft.com/v1.0/users?$filter=extj8xolrvw_linux/uid eq '1000'&$select=id,extj8xolrvw_linux
+  fill_passwd_struct from json -> user:x:1000:1000::/home/user:/bin/bash 
+```
+
+
+# NSS flow for group entries
+```
+nsswitch.conf:
+groups:     files
+
+getent group mygroup -> libnss_files ->
+  open /etc/groups -> search line for mygroup ->
+  fill_group_struct -> mygroup:x:1000:user,otheruser
+```
+```
+nsswitch.conf:
+groups:     aad
+
+getent group mygroup -> libnss_files ->
+  open /etc/azuread/parameters.conf for app_id and secret ->
+  get_bearer_token -> graph/groups/mygroup/members?$select=id,extj8xolrvw_linux -> 
+  fill_group_struct from json -> mygroup:x:1000:user,otheruser 
+```
+```
+nsswitch.conf:
+groups:     aad
+
+getent group 1000 -> libnss_files ->
+  open /etc/azuread/parameters.conf for app_id and secret ->
+  get_bearer_token -> graph.microsoft.com/v1.0/groups?$filter=extj8xolrvw_linux/gid eq '1000'&$select=id,extj8xolrvw_linux ->
+  group = mygroup -> graph/groups/mygroup/members?$select=id,extj8xolrvw_linux -> 
+  fill_group_struct from json -> mygroup:x:1000:user,otheruser 
+```
+
