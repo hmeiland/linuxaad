@@ -8,6 +8,7 @@
 #include <unistd.h>  
 #include <getopt.h>  
 #include <nss_http.h>
+#include <aad_attribute.h>
 
 #define NSS_HTTP_INITIAL_BUFFER_SIZE (256 * 1024)  /* 256 KB */
 #define NSS_HTTP_MAX_BUFFER_SIZE (10 * 1024 * 1024)  /* 10 MB */
@@ -18,7 +19,7 @@ void list_groups(char *format)
     const char *access_token;
     json_t *json_root;
     json_error_t json_error;
-    json_t *j_id, *j_displayname, *j_group, *j_gid;
+    json_t *j_id, *j_displayname, *j_group, *j_gid, *j_gidnumber;
 
     char *client_id = nss_read_config("client_id");
     char *secret = nss_read_config("secret");
@@ -37,10 +38,10 @@ void list_groups(char *format)
     }
     json_decref(json_root);
 
-    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/groups?$select=id,displayName,extj8xolrvw_linux");
+    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/groups?$select=id,displayName,extj8xolrvw_linux,%s,%s", AAD_GIDNUMBER, AAD_GID);
     char *response = nss_http_request(graph_url, auth_header);
     
-    if(!strcmp(format, "list")) printf("id\t\t\t\t\tdisplayName\t\tgroup\tgid\n");
+    if(!strcmp(format, "list")) printf("id\t\t\t\t\tdisplayName\t\tgroupname\tgidnumber\n");
 
     json_root = json_loads(response, 0, &json_error);
     json_t *passwd_object = json_object_get(json_root, "value");
@@ -50,11 +51,13 @@ void list_groups(char *format)
       json_t *entry_data = json_array_get(passwd_object, i);
       j_id = json_object_get(entry_data, "id");
       j_displayname = json_object_get(entry_data, "displayName");
+      j_gidnumber = json_object_get(entry_data, AAD_GIDNUMBER);
+      j_gid = json_object_get(entry_data, AAD_GID);
 
       json_t *extension_object = json_object_get(entry_data, "extj8xolrvw_linux");
 
       j_group = json_object_get(extension_object, "group");
-      j_gid = json_object_get(extension_object, "gid");
+      //j_gid = json_object_get(extension_object, "gid");
 
       if (!strcmp(format, "list")) {
         printf("%s\t", json_string_value(j_id));
@@ -67,8 +70,16 @@ void list_groups(char *format)
           printf("%s\t", json_string_value(j_group));
         } else { printf("not_set\t"); }
 
-        if (json_integer_value(j_gid)) {
-          printf("%lli\t", json_integer_value(j_gid));
+        //if (json_integer_value(j_gid)) {
+          //printf("%lli\t", json_integer_value(j_gid));
+        //} else { printf("not_set\t"); }
+
+        if (json_string_value(j_gid)) {
+          printf("%s\t", json_string_value(j_gid));
+        } else { printf("not_set\t"); }
+
+        if (json_integer_value(j_gidnumber)) {
+          printf("%lli\t", json_integer_value(j_gidnumber));
         } else { printf("not_set\t"); }
         printf("\n");
       }

@@ -8,6 +8,7 @@
 #include <unistd.h>  
 #include <getopt.h>  
 #include <nss_http.h>
+#include <aad_attribute.h>
 
 #define NSS_HTTP_INITIAL_BUFFER_SIZE (256 * 1024)  /* 256 KB */
 #define NSS_HTTP_MAX_BUFFER_SIZE (10 * 1024 * 1024)  /* 10 MB */
@@ -19,7 +20,8 @@ void list_users(char *format)
     json_t *json_root;
     json_error_t json_error;
     //json_t *j_id, *j_mail, *j_principal, *j_user, *j_pw_passwd, *j_uid, *j_gidnumber, *j_pw_gecos, *j_homedir, *j_shell;
-    json_t *j_id, *j_mail, *j_principal, *j_user, *j_uid, *j_gidnumber, *j_homedir, *j_shell;
+    //json_t *j_id, *j_mail, *j_principal, *j_user, *j_uid, *j_gidnumber, *j_homedir, *j_shell, *j_uidnumber;
+    json_t *j_id, *j_mail, *j_principal, *j_uid, *j_gidnumber, *j_homedir, *j_shell, *j_uidnumber;
 
     char *client_id = nss_read_config("client_id");
     char *secret = nss_read_config("secret");
@@ -38,10 +40,11 @@ void list_users(char *format)
     }
     json_decref(json_root);
 
-    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$select=id,userPrincipalName,mail,extj8xolrvw_linux");
+    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$select=%s,%s,%s,%s,%s,%s,%s,%s,%s",
+        "id", "userPrincipalName", "mail", "extj8xolrvw_linux", AAD_UID, AAD_UIDNUMBER, AAD_GIDNUMBER, AAD_UNIXHOMEDIRECTORY, AAD_LOGINSHELL );
     char *response = nss_http_request(graph_url, auth_header);
     
-    if(!strcmp(format, "list")) printf("id\t\t\t\t\tuserPrincipalName\t\tuser\tuid\tgidnumber\thomedir\t\tshell\n");
+    if(!strcmp(format, "list")) printf("id\t\t\t\t\tuserPrincipalName\t\tuser\tuidnumber\tgidnumber\thomedir\tshell\n");
 
     json_root = json_loads(response, 0, &json_error);
     json_t *passwd_object = json_object_get(json_root, "value");
@@ -52,30 +55,44 @@ void list_users(char *format)
       j_id = json_object_get(entry_data, "id");
       j_principal = json_object_get(entry_data, "userPrincipalName");
       j_mail = json_object_get(entry_data, "mail");
+      j_uid = json_object_get(entry_data, AAD_UID);
+      j_uidnumber = json_object_get(entry_data, AAD_UIDNUMBER);
+      j_gidnumber = json_object_get(entry_data, AAD_GIDNUMBER);
+      j_shell = json_object_get(entry_data, AAD_LOGINSHELL);
+      j_homedir = json_object_get(entry_data, AAD_UNIXHOMEDIRECTORY);
 
-      json_t *extension_object = json_object_get(entry_data, "extj8xolrvw_linux");
+      //json_t *extension_object = json_object_get(entry_data, "extj8xolrvw_linux");
 
-      j_user = json_object_get(extension_object, "user");
-      j_uid = json_object_get(extension_object, "uid");
-      j_gidnumber = json_object_get(extension_object, "gidnumber");
-      j_homedir = json_object_get(extension_object, "homedir");
-      j_shell = json_object_get(extension_object, "shell");
+      //j_user = json_object_get(extension_object, "user");
+      //j_uid = json_object_get(extension_object, "uid");
+      //j_gidnumber = json_object_get(extension_object, "gidnumber");
+      //j_homedir = json_object_get(extension_object, "homedir");
+      //j_shell = json_object_get(extension_object, "shell");
 
       if (!strcmp(format, "list")) {
         printf("%s\t", json_string_value(j_id));
         if (!json_is_null(j_mail)) {
           printf("%s\t", json_string_value(j_mail));
-          if (strlen(json_string_value(j_mail)) < 25) printf("\t");
+          if (strlen(json_string_value(j_mail)) < 25) printf("\t\t\t");
         } else {
           if (!json_is_null(j_principal)) printf("%s\t", json_string_value(j_principal));
         }
 
-        if (json_string_value(j_user)) { 
-          printf("%s\t", json_string_value(j_user));
+        //if (json_string_value(j_user)) { 
+          //printf("%s\t", json_string_value(j_user));
+        if (json_string_value(j_uid)) { 
+          printf("%s\t", json_string_value(j_uid));
         } else { printf("not_set\t"); }
 
-        if (json_integer_value(j_uid)) {
-          printf("%lli\t", json_integer_value(j_uid));
+        //if (json_integer_value(j_uidnumber)) {
+          //printf("%lli\t", json_integer_value(j_uid));
+          //printf("%s\t", json_string_value(j_uidnumber));
+        //} else if (json_is_array(j_uid)) {
+          //printf("%lli\t", json_integer_value(j_uid));
+          //printf("%s\t", json_string_value(json_array_get(j_uid,0)));
+        //} else { printf("not_set\t"); }
+        if (json_integer_value(j_uidnumber)) {
+          printf("%lli\t", json_integer_value(j_uidnumber));
         } else { printf("not_set\t"); }
 
         if (json_integer_value(j_gidnumber)) {
@@ -90,10 +107,12 @@ void list_users(char *format)
         if (json_string_value(j_shell)) {
           printf("%s\t", json_string_value(j_shell));
         } else { printf("not_set\t"); }
+
         printf("\n");
       }
       if (!strcmp(format, "passwd")) {
-        printf("%s:x:%lli:%lli:,,,:%s:%s\n", json_string_value(j_user), json_integer_value(j_uid), json_integer_value(j_gidnumber), json_string_value(j_homedir), json_string_value(j_shell));
+        //printf("%s:x:%lli:%lli:,,,:%s:%s\n", json_string_value(j_user), json_integer_value(j_uid), json_integer_value(j_gidnumber), json_string_value(j_homedir), json_string_value(j_shell));
+        printf("%s:x:%lli:%lli:,,,:%s:%s\n", json_string_value(j_uid), json_integer_value(j_uidnumber), json_integer_value(j_gidnumber), json_string_value(j_homedir), json_string_value(j_shell));
       }
     }
 
