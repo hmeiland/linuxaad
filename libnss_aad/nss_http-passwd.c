@@ -1,4 +1,5 @@
-#include "nss_http.h"
+#include "nss_aad.h"
+#include <aad_attribute.h>
 
 static pthread_mutex_t NSS_HTTP_MUTEX = PTHREAD_MUTEX_INITIALIZER;
 #define NSS_HTTP_LOCK()    do { pthread_mutex_lock(&NSS_HTTP_MUTEX); } while (0)
@@ -14,32 +15,38 @@ static int
 //pack_passwd_struct(json_t *root, struct passwd *result, char *buffer, size_t buflen)
 pack_passwd_struct(json_t *entry_data, struct passwd *result, char *buffer, size_t buflen)
 {
-
     char * next_buf = buffer;
     size_t bufleft = buflen;
     json_t *j_pw_name, *j_pw_passwd, *j_pw_uid, *j_pw_gid, *j_pw_gecos, *j_pw_dir, *j_pw_shell;
 
-    //printf("%s\n", json_dumps(entry_data, JSON_INDENT(2)));
+    if (!entry_data) return -1;
+    //if (entry_data) printf("%s\n", json_dumps(entry_data, JSON_INDENT(2)));
 
     json_t *extension_object = json_object_get(entry_data, "extj8xolrvw_linux");
     //if (!json_is_null(extension_object)) return -1;
     //printf("%s\n", json_dumps(extension_object, JSON_INDENT(2)));
 
-    j_pw_name = json_object_get(extension_object, "user");
+    //j_pw_name = json_object_get(extension_object, "user");
+    j_pw_name = json_object_get(entry_data, AAD_UID);
     j_pw_passwd = json_object_get(extension_object, "passwd");
-    j_pw_uid = json_object_get(extension_object, "uid");
-    j_pw_gid = json_object_get(extension_object, "gidnumber");
-    j_pw_gecos = json_object_get(extension_object, "gecos");
-    j_pw_dir = json_object_get(extension_object, "homedir");
-    j_pw_shell = json_object_get(extension_object, "shell");
+    //j_pw_uid = json_object_get(extension_object, "uid");
+    j_pw_uid = json_object_get(entry_data, AAD_UIDNUMBER);
+    //j_pw_gid = json_object_get(extension_object, "gidnumber");
+    j_pw_gid = json_object_get(entry_data, AAD_GIDNUMBER);
+    //j_pw_gecos = json_object_get(extension_object, "gecos");
+    j_pw_gecos = json_object_get(entry_data, AAD_GECOS);
+    //j_pw_dir = json_object_get(extension_object, "homedir");
+    j_pw_dir = json_object_get(entry_data, AAD_UNIXHOMEDIRECTORY);
+    //j_pw_shell = json_object_get(extension_object, "shell");
+    j_pw_shell = json_object_get(entry_data, AAD_LOGINSHELL);
 
     if (!json_is_string(j_pw_name)) return -1;
-    if (!json_is_string(j_pw_passwd) && !json_is_null(j_pw_passwd)) return -1;
+    if ((j_pw_passwd) && !json_is_string(j_pw_passwd) && !json_is_null(j_pw_passwd)) return -1;
     if (!json_is_integer(j_pw_uid)) return -1;
     if (!json_is_integer(j_pw_gid)) return -1;
-    if (!json_is_string(j_pw_gecos) && !json_is_null(j_pw_gecos)) return -1;
-    if (!json_is_string(j_pw_dir)) return -1;
-    if (!json_is_string(j_pw_shell)) return -1;
+    if ((j_pw_gecos) && !json_is_string(j_pw_gecos) && !json_is_null(j_pw_gecos)) return -1;
+    if ((j_pw_dir) && !json_is_string(j_pw_dir)) return -1;
+    if ((j_pw_shell) && !json_is_string(j_pw_shell)) return -1;
 
     memset(buffer, '\0', buflen);
 
@@ -48,7 +55,7 @@ pack_passwd_struct(json_t *entry_data, struct passwd *result, char *buffer, size
     next_buf += strlen(result->pw_name) + 1;
     bufleft  -= strlen(result->pw_name) + 1;
 
-    if (json_is_null(j_pw_passwd))
+    if ((!j_pw_passwd) || json_is_null(j_pw_passwd))
     {
       if (bufleft <= 1) return -2;
       result->pw_passwd = strncpy(next_buf, "x", bufleft);
@@ -64,7 +71,7 @@ pack_passwd_struct(json_t *entry_data, struct passwd *result, char *buffer, size
     result->pw_uid = json_integer_value(j_pw_uid);
     result->pw_gid = json_integer_value(j_pw_gid);
 
-    if (json_is_null(j_pw_gecos))
+    if ((!j_pw_gecos) || json_is_null(j_pw_gecos))
     {
         if (bufleft <= 1) return -2;
         result->pw_gecos = strncpy(next_buf, "...", bufleft);
@@ -77,15 +84,31 @@ pack_passwd_struct(json_t *entry_data, struct passwd *result, char *buffer, size
         bufleft  -= strlen(result->pw_gecos) + 1;
     }
 
-    if (bufleft <= j_strlen(j_pw_dir)) return -2;
-    result->pw_dir = strncpy(next_buf, json_string_value(j_pw_dir), bufleft);
-    next_buf += strlen(result->pw_dir) + 1;
-    bufleft  -= strlen(result->pw_dir) + 1;
+    if ((!j_pw_dir) || json_is_null(j_pw_dir))
+    {
+        if (bufleft <= 1) return -2;
+        result->pw_dir = strncpy(next_buf, "unixhomedirectory_not_set_in_ad", bufleft);
+        next_buf += strlen("unixhomedirectory_not_set_in_ad") + 1;
+        bufleft -= strlen("unixhomedirectory_not_set_in_ad") + 1;
+    } else {
+        if (bufleft <= j_strlen(j_pw_dir)) return -2;
+        result->pw_dir = strncpy(next_buf, json_string_value(j_pw_dir), bufleft);
+        next_buf += strlen(result->pw_dir) + 1;
+        bufleft  -= strlen(result->pw_dir) + 1;
+    }
 
-    if (bufleft <= j_strlen(j_pw_shell)) return -2;
-    result->pw_shell = strncpy(next_buf, json_string_value(j_pw_shell), bufleft);
-    next_buf += strlen(result->pw_shell) + 1;
-    bufleft  -= strlen(result->pw_shell) + 1;
+    if ((!j_pw_shell) || json_is_null(j_pw_shell))
+    {
+        if (bufleft <= 1) return -2;
+        result->pw_shell = strncpy(next_buf, "loginshell_not_set_in_ad", bufleft);
+        next_buf += strlen("loginshell_not_set_in_ad") + 1;
+        bufleft -= strlen("loginshell_not_set_in_ad") + 1;
+    } else {
+        if (bufleft <= j_strlen(j_pw_shell)) return -2;
+        result->pw_shell = strncpy(next_buf, json_string_value(j_pw_shell), bufleft);
+        next_buf += strlen(result->pw_shell) + 1;
+        bufleft  -= strlen(result->pw_shell) + 1;
+    }
 
     return 0;
 }
@@ -116,7 +139,8 @@ _nss_aad_setpwent_locked(int stayopen)
     }
     json_decref(json_root);
 
-    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=extj8xolrvw_linux/uid%%20ge%%20%%2725000%%27&$select=id,extj8xolrvw_linux");
+    //snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=extj8xolrvw_linux/uid%%20ge%%20%%2725000%%27&$select=id,extj8xolrvw_linux,%s,%s,%s,%s,%s", AAD_UID, AAD_UIDNUMBER, AAD_GIDNUMBER, AAD_UNIXHOMEDIRECTORY, AAD_LOGINSHELL);
+    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=%s%%20ge%%20%%2725000%%27&$select=id,extj8xolrvw_linux,%s,%s,%s,%s,%s", AAD_UIDNUMBER,AAD_UID, AAD_UIDNUMBER, AAD_GIDNUMBER, AAD_UNIXHOMEDIRECTORY, AAD_LOGINSHELL);
 
     char *response = nss_http_request(graph_url, auth_header);
 
@@ -251,7 +275,8 @@ _nss_aad_getpwuid_r_locked(uid_t uid, struct passwd *result, char *buffer, size_
     }
     json_decref(json_root);
 
-    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=extj8xolrvw_linux/uid%%20eq%%20%%27%i%%27&$select=id,extj8xolrvw_linux", uid);
+    //snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=extj8xolrvw_linux/uid%%20eq%%20%%27%i%%27&$select=id,extj8xolrvw_linux,%s,%s,%s,%s,%s", uid, AAD_UID, AAD_UIDNUMBER, AAD_GIDNUMBER, AAD_UNIXHOMEDIRECTORY, AAD_LOGINSHELL);
+    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=%s%%20eq%%20%%27%i%%27&$select=id,extj8xolrvw_linux,%s,%s,%s,%s,%s", AAD_UIDNUMBER, uid, AAD_UID, AAD_UIDNUMBER, AAD_GIDNUMBER, AAD_UNIXHOMEDIRECTORY, AAD_LOGINSHELL);
 
     char *response = nss_http_request(graph_url, auth_header);
 
@@ -329,7 +354,8 @@ _nss_aad_getpwnam_r_locked(const char *name, struct passwd *result, char *buffer
     }
     json_decref(json_root);
 
-    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=extj8xolrvw_linux/user%%20eq%%20%%27%s%%27&$select=id,extj8xolrvw_linux", name);
+    //snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=extj8xolrvw_linux/user%%20eq%%20%%27%s%%27&$select=id,extj8xolrvw_linux,%s,%s,%s,%s,%s", name, AAD_UID, AAD_UIDNUMBER, AAD_GIDNUMBER, AAD_UNIXHOMEDIRECTORY, AAD_LOGINSHELL);
+    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=%s%%20eq%%20%%27%s%%27&$select=id,extj8xolrvw_linux,%s,%s,%s,%s,%s", AAD_UID, name, AAD_UID, AAD_UIDNUMBER, AAD_GIDNUMBER, AAD_UNIXHOMEDIRECTORY, AAD_LOGINSHELL);
 
     char *response = nss_http_request(graph_url, auth_header);
 
@@ -348,6 +374,7 @@ _nss_aad_getpwnam_r_locked(const char *name, struct passwd *result, char *buffer
     json_t *passwd_object = json_object_get(json_root, "value");
     if (!json_is_array(passwd_object)) return -1;
     if (json_array_size(passwd_object) < 1) return -1;
+    //printf("%s\n", json_dumps(passwd_object, JSON_INDENT(2)));
 
     json_t *entry_data = json_array_get(passwd_object, 0);
 
