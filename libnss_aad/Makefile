@@ -20,26 +20,25 @@ build: nss_aad
 nss_aad_build_dir:
 	[ -d $(BUILD) ] || mkdir $(BUILD)
 
-nss_http-passwd:
-	$(CC) $(CFLAGS) -c nss_http-passwd.c -o $(BUILD)/nss_http-passwd.o -I.
+nss_aad-passwd:
+	$(CC) $(CFLAGS) -c nss_aad-passwd.c -o $(BUILD)/nss_aad-passwd.o -I.
 
-nss_http-group:
-	$(CC) $(CFLAGS) -c nss_http-group.c -o $(BUILD)/nss_http-group.o
+nss_aad-group:
+	$(CC) $(CFLAGS) -c nss_aad-group.c -o $(BUILD)/nss_aad-group.o -I.
 
-nss_http-shadow:
-	$(CC) $(CFLAGS) -c nss_http-shadow.c -o $(BUILD)/nss_http-shadow.o
+nss_aad-shadow:
+	$(CC) $(CFLAGS) -c nss_aad-shadow.c -o $(BUILD)/nss_aad-shadow.o -I.
 
-nss_aad_services: nss_http-passwd nss_http-group nss_http-shadow
-#nss_aad_services: nss_http-passwd nss_http-group
+nss_aad_services: nss_aad-passwd nss_aad-group nss_aad-shadow
 
 nss_aad: nss_aad_build_dir nss_aad_services
 	$(CC) $(CFLAGS) -c nss_aad.c -o $(BUILD)/nss_aad.o
 
 	$(CC) -shared $(LD_SONAME) -o $(BUILD)/$(LIBRARY) \
 		$(BUILD)/nss_aad.o \
-		$(BUILD)/nss_http-passwd.o \
-		$(BUILD)/nss_http-group.o \
-		$(BUILD)/nss_http-shadow.o \
+		$(BUILD)/nss_aad-passwd.o \
+		$(BUILD)/nss_aad-group.o \
+		$(BUILD)/nss_aad-shadow.o \
                 -lcurl -ljansson
 
 clean:

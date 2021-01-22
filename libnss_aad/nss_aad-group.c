@@ -1,4 +1,5 @@
 #include "nss_aad.h"
+#include <aad_attribute.h>
 
 static pthread_mutex_t NSS_HTTP_MUTEX = PTHREAD_MUTEX_INITIALIZER;
 #define NSS_HTTP_LOCK()    do { pthread_mutex_lock(&NSS_HTTP_MUTEX); } while (0)
@@ -93,35 +94,43 @@ _nss_aad_setgrent_locked(int stayopen)
     }
     json_decref(json_root);
 
-    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/groups?$select=id,extj8xolrvw_linux");
+    //snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/groups?$select=id,extj8xolrvw_linux,%s", AAD_GIDNUMBER);
+    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/groups?$filter=%s%%20ge%%20%%2725000%%27&$select=id,extj8xolrvw_linux,%s", AAD_GIDNUMBER, AAD_GIDNUMBER);
 
     char *groupresponse = nss_http_request(graph_url, auth_header);
 
     group_root = json_loads(groupresponse, 0, &json_error);
     json_t *group_object = json_object_get(group_root, "value");
+    // all groups with gidnumber > 25000
+    printf("%s\n", json_dumps(group_object, JSON_INDENT(2)));
     if (!json_is_array(group_object)) return -1;
     if (json_array_size(group_object) < 1) return -1;
     for(int i = 0; i < json_array_size(group_object); i++)
     {
       json_t *entry_data = json_array_get(group_object, i);
+      printf("%s\n", json_dumps(entry_data, JSON_INDENT(2)));
       j_gr_id= json_object_get(entry_data, "id");
       if (json_is_string(j_gr_id)) {
-        snprintf(members_url, 512, "%s%s%s", "https://graph.microsoft.com/v1.0/groups/", json_string_value(j_gr_id), "/members?$select=id,extj8xolrvw_linux");
+        snprintf(members_url, 512, "%s%s%s%s", "https://graph.microsoft.com/v1.0/groups/", json_string_value(j_gr_id), "/members?$select=id,extj8xolrvw_linux,", AAD_UID);
       }
-      json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), "extj8xolrvw_linux");
+      //json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), "extj8xolrvw_linux");
+      json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), AAD_GIDNUMBER);
 
       membersresponse = nss_http_request(members_url, auth_header);
       members_root = json_loads(membersresponse, 0, &json_error);
       if (!json_is_array(json_object_get(members_root, "value"))) return -1;
       if (json_array_size(json_object_get(members_root, "value")) < 1) return -1;
+      printf("%s\n", json_dumps(members_root, JSON_INDENT(2)));
 
       json_t *memberlist = json_array();
       
       for(int j = 0; j < json_array_size(json_object_get(members_root, "value")); j++)
       {
-        json_array_append(memberlist, json_object_get(json_object_get(json_array_get(json_object_get(members_root, "value"), j), "extj8xolrvw_linux"), "user"));
+        //json_array_append(memberlist, json_object_get(json_object_get(json_array_get(json_object_get(members_root, "value"), j), "extj8xolrvw_linux"), "user"));
+        json_array_append(memberlist, json_object_get(json_array_get(json_object_get(members_root, "value"), j), AAD_UID));
       } 
       json_object_set(nested, "members", memberlist);
+      printf("%s\n", json_dumps(memberlist, JSON_INDENT(2)));
       json_decref(members_root);
     }
 
