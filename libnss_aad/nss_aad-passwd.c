@@ -21,14 +21,15 @@ pack_passwd_struct(json_t *entry_data, struct passwd *result, char *buffer, size
 
     if (!entry_data) return -1;
     //if (entry_data) printf("%s\n", json_dumps(entry_data, JSON_INDENT(2)));
-
-    json_t *extension_object = json_object_get(entry_data, "extj8xolrvw_linux");
+    //printf("debug 1\n");
+    //json_t *extension_object = json_object_get(entry_data, "extj8xolrvw_linux");
     //if (!json_is_null(extension_object)) return -1;
     //printf("%s\n", json_dumps(extension_object, JSON_INDENT(2)));
 
     //j_pw_name = json_object_get(extension_object, "user");
     j_pw_name = json_object_get(entry_data, AAD_UID);
-    j_pw_passwd = json_object_get(extension_object, "passwd");
+    j_pw_passwd = NULL;
+    //j_pw_passwd = json_object_get(extension_object, "passwd");
     //j_pw_uid = json_object_get(extension_object, "uid");
     j_pw_uid = json_object_get(entry_data, AAD_UIDNUMBER);
     //j_pw_gid = json_object_get(extension_object, "gidnumber");
@@ -41,7 +42,7 @@ pack_passwd_struct(json_t *entry_data, struct passwd *result, char *buffer, size
     j_pw_shell = json_object_get(entry_data, AAD_LOGINSHELL);
 
     if (!json_is_string(j_pw_name)) return -1;
-    if ((j_pw_passwd) && !json_is_string(j_pw_passwd) && !json_is_null(j_pw_passwd)) return -1;
+    //if ((j_pw_passwd) && !json_is_string(j_pw_passwd) && !json_is_null(j_pw_passwd)) return -1;
     if (!json_is_integer(j_pw_uid)) return -1;
     if (!json_is_integer(j_pw_gid)) return -1;
     if ((j_pw_gecos) && !json_is_string(j_pw_gecos) && !json_is_null(j_pw_gecos)) return -1;
@@ -135,12 +136,14 @@ _nss_aad_setpwent_locked(int stayopen)
     json_t *access_token_object = json_object_get(json_root, "access_token");
     access_token = json_string_value(access_token_object);
     if (json_is_string(access_token_object)) {
-      snprintf(auth_header, 2048, "%s %s\n", "Authorization: Bearer", access_token);
+      snprintf(auth_header, 4096, "%s %s", "Authorization: Bearer", access_token);
     }
     json_decref(json_root);
 
     //snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=extj8xolrvw_linux/uid%%20ge%%20%%2725000%%27&$select=id,extj8xolrvw_linux,%s,%s,%s,%s,%s", AAD_UID, AAD_UIDNUMBER, AAD_GIDNUMBER, AAD_UNIXHOMEDIRECTORY, AAD_LOGINSHELL);
     snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/users?$filter=%s%%20ge%%20%%2725000%%27&$select=id,extj8xolrvw_linux,%s,%s,%s,%s,%s", AAD_UIDNUMBER,AAD_UID, AAD_UIDNUMBER, AAD_GIDNUMBER, AAD_UNIXHOMEDIRECTORY, AAD_LOGINSHELL);
+    //printf("debug %s\n", graph_url);
+    //printf("debug %s\n", auth_header);
 
     char *response = nss_http_request(graph_url, auth_header);
 
@@ -149,6 +152,7 @@ _nss_aad_setpwent_locked(int stayopen)
     }
 
     json_root = json_loads(response, 0, &json_error);
+    //printf("%s\n", json_dumps(json_root, JSON_INDENT(2)));
     if (!json_is_array(json_object_get(json_root, "value"))) return -1;
     if (json_array_size(json_object_get(json_root, "value")) < 1) return -1;
     json_t *passwd_object = json_object_get(json_root, "value");
@@ -205,6 +209,7 @@ enum nss_status
 _nss_aad_getpwent_r_locked(struct passwd *result, char *buffer, size_t buflen, int *errnop)
 {
     enum nss_status ret = NSS_STATUS_SUCCESS;
+    //printf("debug 2\n");
 
     if (ent_json_root == NULL) {
         ret = _nss_aad_setpwent_locked(0);
@@ -257,6 +262,7 @@ _nss_aad_getpwuid_r_locked(uid_t uid, struct passwd *result, char *buffer, size_
     const char * access_token;
     json_t *json_root;
     json_error_t json_error;
+    printf("debug 3\n");
 
     char *client_id = nss_read_config("client_id");
     char *secret = nss_read_config("secret");
@@ -336,6 +342,7 @@ _nss_aad_getpwnam_r_locked(const char *name, struct passwd *result, char *buffer
     const char * access_token;
     json_t *json_root;
     json_error_t json_error;
+    printf("debug 4\n");
     
     char *client_id = nss_read_config("client_id");
     char *secret = nss_read_config("secret");
@@ -374,7 +381,7 @@ _nss_aad_getpwnam_r_locked(const char *name, struct passwd *result, char *buffer
     json_t *passwd_object = json_object_get(json_root, "value");
     if (!json_is_array(passwd_object)) return -1;
     if (json_array_size(passwd_object) < 1) return -1;
-    //printf("%s\n", json_dumps(passwd_object, JSON_INDENT(2)));
+    printf("%s\n", json_dumps(passwd_object, JSON_INDENT(2)));
 
     json_t *entry_data = json_array_get(passwd_object, 0);
 
