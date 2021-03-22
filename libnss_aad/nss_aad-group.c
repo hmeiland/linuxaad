@@ -20,11 +20,15 @@ pack_group_struct(json_t *passwd_object, struct group *result, char *buffer, siz
     size_t bufleft = buflen;
     json_t *j_gr_name, *j_gr_gid, *j_gr_mem, *j_member;
 
-    json_t *extension_object = json_object_get(passwd_object, "extj8xolrvw_linux");
+    //printf("forwarded passwd_object\n%s\n", json_dumps(passwd_object, JSON_INDENT(2)));
+    
+    //json_t *extension_object = json_object_get(passwd_object, "extj8xolrvw_linux");
 
-    j_gr_name = json_object_get(extension_object, "group");
-    j_gr_gid = json_object_get(extension_object, "gid");
-    j_gr_mem = json_object_get(extension_object, "members");
+    //j_gr_name = json_object_get(extension_object, "group");
+    j_gr_name = json_object_get(passwd_object, AAD_UID );
+    //j_gr_gid = json_object_get(extension_object, "gid");
+    j_gr_gid = json_object_get(passwd_object, AAD_GIDNUMBER);
+    j_gr_mem = json_object_get(passwd_object, "members");
 
     if (!json_is_string(j_gr_name)) return -1;
     if (!json_is_integer(j_gr_gid)) return -1;
@@ -90,37 +94,41 @@ _nss_aad_setgrent_locked(int stayopen)
     access_token = json_string_value(access_token_object);
 
     if (json_is_string(access_token_object)) {
-      snprintf(auth_header, 2048, "%s %s\n", "Authorization: Bearer", access_token);
+      snprintf(auth_header, 2048, "%s %s", "Authorization: Bearer", access_token);
     }
     json_decref(json_root);
 
     //snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/groups?$select=id,extj8xolrvw_linux,%s", AAD_GIDNUMBER);
-    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/groups?$filter=%s%%20ge%%20%%2725000%%27&$select=id,extj8xolrvw_linux,%s", AAD_GIDNUMBER, AAD_GIDNUMBER);
+    snprintf(graph_url, 512, "https://graph.microsoft.com/v1.0/groups?$filter=%s%%20ge%%20%%2725000%%27&$select=id,extj8xolrvw_linux,%s,%s", AAD_GIDNUMBER, AAD_GIDNUMBER, AAD_GID);
+    //printf("%s\n",graph_url);
 
     char *groupresponse = nss_http_request(graph_url, auth_header);
 
     group_root = json_loads(groupresponse, 0, &json_error);
     json_t *group_object = json_object_get(group_root, "value");
     // all groups with gidnumber > 25000
-    printf("%s\n", json_dumps(group_object, JSON_INDENT(2)));
+    //printf("group root\n%s\n", json_dumps(group_root, JSON_INDENT(2)));
     if (!json_is_array(group_object)) return -1;
     if (json_array_size(group_object) < 1) return -1;
     for(int i = 0; i < json_array_size(group_object); i++)
     {
       json_t *entry_data = json_array_get(group_object, i);
-      printf("%s\n", json_dumps(entry_data, JSON_INDENT(2)));
+      //printf("%s\n", json_dumps(entry_data, JSON_INDENT(2)));
       j_gr_id= json_object_get(entry_data, "id");
       if (json_is_string(j_gr_id)) {
         snprintf(members_url, 512, "%s%s%s%s", "https://graph.microsoft.com/v1.0/groups/", json_string_value(j_gr_id), "/members?$select=id,extj8xolrvw_linux,", AAD_UID);
       }
       //json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), "extj8xolrvw_linux");
-      json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), AAD_GIDNUMBER);
+      //json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), AAD_GIDNUMBER);
+      //json_t *nested = json_object_get(json_object_get(group_root, "value"), i);
+      //printf("nested %s\n", json_dumps(nested, JSON_INDENT(2)));
+      //printf("%s\n",members_url);
 
       membersresponse = nss_http_request(members_url, auth_header);
       members_root = json_loads(membersresponse, 0, &json_error);
       if (!json_is_array(json_object_get(members_root, "value"))) return -1;
       if (json_array_size(json_object_get(members_root, "value")) < 1) return -1;
-      printf("%s\n", json_dumps(members_root, JSON_INDENT(2)));
+      //printf("obtained members_root%s\n", json_dumps(members_root, JSON_INDENT(2)));
 
       json_t *memberlist = json_array();
       
@@ -129,8 +137,10 @@ _nss_aad_setgrent_locked(int stayopen)
         //json_array_append(memberlist, json_object_get(json_object_get(json_array_get(json_object_get(members_root, "value"), j), "extj8xolrvw_linux"), "user"));
         json_array_append(memberlist, json_object_get(json_array_get(json_object_get(members_root, "value"), j), AAD_UID));
       } 
-      json_object_set(nested, "members", memberlist);
-      printf("%s\n", json_dumps(memberlist, JSON_INDENT(2)));
+      //json_object_set(nested, "members", memberlist);
+      json_object_set(entry_data, "members", memberlist);
+      //printf("created memberlist\n%s\n", json_dumps(memberlist, JSON_INDENT(2)));
+      //printf("updated members_root%s\n", json_dumps(members_root, JSON_INDENT(2)));
       json_decref(members_root);
     }
 
@@ -286,7 +296,7 @@ _nss_aad_getgrgid_r_locked(gid_t gid, struct group *result, char *buffer, size_t
         snprintf(members_url, 512, "%s%s%s", "https://graph.microsoft.com/v1.0/groups/", json_string_value(j_gr_id), "/members?$select=id,extj8xolrvw_linux");
       }
       //json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), i), "extj8xolrvw_linux");
-      json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), 0), "extj8xolrvw_linux");
+      //json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), 0), "extj8xolrvw_linux");
 
       membersresponse = nss_http_request(members_url, auth_header);
       members_root = json_loads(membersresponse, 0, &json_error);
@@ -299,7 +309,7 @@ _nss_aad_getgrgid_r_locked(gid_t gid, struct group *result, char *buffer, size_t
       {
         json_array_append(memberlist, json_object_get(json_object_get(json_array_get(json_object_get(members_root, "value"), j), "extj8xolrvw_linux"), "user"));
       } 
-      json_object_set(nested, "members", memberlist);
+      //json_object_set(nested, "members", memberlist);
     //}
     json_decref(members_root);
 
@@ -394,7 +404,7 @@ _nss_aad_getgrnam_r_locked(const char *name, struct group *result, char *buffer,
       if (json_is_string(j_gr_id)) {
         snprintf(members_url, 512, "%s%s%s", "https://graph.microsoft.com/v1.0/groups/", json_string_value(j_gr_id), "/members?$select=id,extj8xolrvw_linux");
       }
-      json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), 0), "extj8xolrvw_linux");
+      //json_t *nested = json_object_get(json_array_get(json_object_get(group_root, "value"), 0), "extj8xolrvw_linux");
 
       membersresponse = nss_http_request(members_url, auth_header);
       //printf("%s\n", membersresponse);
@@ -408,7 +418,7 @@ _nss_aad_getgrnam_r_locked(const char *name, struct group *result, char *buffer,
       {
         json_array_append(memberlist, json_object_get(json_object_get(json_array_get(json_object_get(members_root, "value"), j), "extj8xolrvw_linux"), "user"));
       } 
-      json_object_set(nested, "members", memberlist);
+      //json_object_set(nested, "members", memberlist);
     //}
     json_decref(members_root);
 
